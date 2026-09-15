@@ -38,7 +38,7 @@ const BLUE = "#48c8f0";
 
 function header(text: string, name: string) {
   const m = text.match(new RegExp(`^${name}:\\s*(.+)$`, "im"));
-  return m ? m[1].trim() : "";
+  return m?.[1]?.trim() ?? "";
 }
 
 function extractIps(text: string) {
@@ -113,7 +113,7 @@ export function analyze(raw: string): Analysis {
   const ips = extractIps(text);
   const fallback = ["185.220.101.4", "45.148.10.92", "203.0.113.7"];
   const chain = (ips.length ? ips : fallback).slice(0, 3);
-  while (chain.length < 3) chain.push(fallback[chain.length]);
+  while (chain.length < 3) chain.push(fallback[chain.length] as string);
 
   const positions = [
     { x: 92, y: 250 },
@@ -133,7 +133,7 @@ export function analyze(raw: string): Analysis {
         risk: score >= 45 ? "RISK 0.99" : "RISK 0.04",
         color: score >= 45 ? RED : GREEN,
         ip,
-        ...positions[0],
+        ...(positions[0] as { x: number; y: number }),
       };
     }
     if (i === 1) {
@@ -147,7 +147,7 @@ export function analyze(raw: string): Analysis {
         risk: score >= 45 ? "RISK 0.81" : "RISK 0.06",
         color: score >= 45 ? ORANGE : GREEN,
         ip,
-        ...positions[1],
+        ...(positions[1] as { x: number; y: number }),
       };
     }
     return {
@@ -157,7 +157,7 @@ export function analyze(raw: string): Analysis {
       risk: score >= 45 ? "CONTAIN" : "DELIVER",
       color: BLUE,
       ip,
-      ...positions[2],
+      ...(positions[2] as { x: number; y: number }),
     };
   });
 

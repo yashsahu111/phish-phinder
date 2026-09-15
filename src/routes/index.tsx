@@ -61,7 +61,7 @@ function Index() {
     return () => clearInterval(id);
   }, []);
 
-  const hop = a.hops[active] ?? a.hops[0];
+  const hop = (a.hops[active] ?? a.hops[0])!;
   const CIRC = 603.2;
 
   const load = (sample: string) => {
@@ -319,17 +319,20 @@ function Index() {
                   {a.mapStatus}
                 </text>
 
-                {a.hops.slice(0, -1).map((h, i) => (
+                {a.hops.slice(0, -1).map((h, i) => {
+                  const next = a.hops[i + 1]!;
+                  return (
                   <path
                     key={h.ip + i}
                     className="route"
-                    d={`M${h.x} ${h.y} Q ${(h.x + a.hops[i + 1].x) / 2} ${Math.min(h.y, a.hops[i + 1].y) - 70} ${a.hops[i + 1].x} ${a.hops[i + 1].y}`}
+                    d={`M${h.x} ${h.y} Q ${(h.x + next.x) / 2} ${Math.min(h.y, next.y) - 70} ${next.x} ${next.y}`}
                     fill="none"
                     stroke={h.color}
                     strokeWidth="2"
                     opacity=".75"
                   />
-                ))}
+                  );
+                })}
 
                 {a.hops.map((h, i) => (
                   <g
