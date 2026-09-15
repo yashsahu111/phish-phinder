@@ -142,3 +142,218 @@
     color: var(--color-foreground);
   }
 }
+
+/* ── Mail AI incident response dashboard (user-supplied design) ─────────── */
+.mailai {
+  --bg: #070a10;
+  --panel: #0d121b;
+  --panel-light: #111927;
+  --line: rgba(148,163,184,.14);
+  --line-bright: rgba(148,163,184,.25);
+  --text: #e8edf5;
+  --muted: #7c8798;
+  --muted-2: #526073;
+  --red: #ff5265;
+  --orange: #ffb454;
+  --green: #32e6a9;
+  --blue: #48c8f0;
+  --purple: #9484ff;
+  --shadow: 0 24px 70px rgba(0,0,0,.28);
+  min-height: 100vh;
+  color: var(--text);
+  background:
+    radial-gradient(circle at 91% 3%, rgba(255,82,101,.16), transparent 25rem),
+    radial-gradient(circle at 0% 90%, rgba(72,200,240,.11), transparent 25rem),
+    var(--bg);
+  font-family: Inter, sans-serif;
+}
+.mailai * { box-sizing: border-box; -webkit-font-smoothing: antialiased; }
+.mailai::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  opacity: .5;
+  pointer-events: none;
+  background-image:
+    linear-gradient(rgba(148,163,184,.045) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(148,163,184,.045) 1px, transparent 1px);
+  background-size: 44px 44px;
+  mask-image: linear-gradient(to bottom, black, transparent 90%);
+}
+.mailai button, .mailai textarea { font: inherit; }
+.mailai button { cursor: pointer; }
+.mailai a { color: inherit; text-decoration: none; }
+.mailai .display { font-family: "Space Grotesk", sans-serif; }
+.mailai .mono { font-family: "JetBrains Mono", monospace; }
+.mailai .shell { position: relative; z-index: 1; width: min(1240px, calc(100% - 36px)); margin: auto; padding: 30px 0 36px; }
+.mailai .header {
+  display: flex; align-items: center; justify-content: space-between; gap: 20px;
+  padding-bottom: 24px; border-bottom: 1px solid var(--line);
+}
+.mailai .brand { display: flex; align-items: center; gap: 14px; }
+.mailai .logo {
+  position: relative; display: grid; place-items: center; width: 48px; height: 48px;
+  border: 1px solid var(--line-bright); border-radius: 16px;
+  background: linear-gradient(135deg, #1a2637, #0c1018);
+  box-shadow: 0 10px 30px rgba(72,200,240,.13);
+}
+.mailai .logo::after {
+  content: ""; position: absolute; width: 9px; height: 9px; top: -3px; right: -3px;
+  border: 2px solid var(--bg); border-radius: 50%; background: var(--red);
+}
+.mailai .logo svg { width: 26px; }
+.mailai .brand-name { margin: 0; font-family: "Space Grotesk", sans-serif; font-size: 23px; letter-spacing: -.06em; }
+.mailai .brand-name span { color: var(--blue); }
+.mailai .eyebrow { margin: 6px 0 0; color: var(--muted); font: 10px "JetBrains Mono", monospace; letter-spacing: .24em; text-transform: uppercase; }
+.mailai .header-actions { display: flex; align-items: center; gap: 10px; }
+.mailai .nav-pill, .mailai .status {
+  padding: 11px 15px; border: 1px solid var(--line-bright); border-radius: 999px;
+  color: var(--muted); font: 10px "JetBrains Mono", monospace; letter-spacing: .16em; text-transform: uppercase;
+}
+.mailai .nav-pill:hover { color: var(--text); border-color: rgba(72,200,240,.45); }
+.mailai .status {
+  display: flex; align-items: center; gap: 8px; border-color: rgba(50,230,169,.28);
+  background: rgba(50,230,169,.07); color: var(--green);
+}
+.mailai .status i { width: 7px; height: 7px; border-radius: 50%; background: var(--green); box-shadow: 0 0 14px var(--green); }
+.mailai .hero { display: flex; align-items: end; justify-content: space-between; gap: 30px; padding: 38px 0 30px; }
+.mailai .hero h1 { max-width: 720px; margin: 0; font-family: "Space Grotesk", sans-serif; font-size: clamp(2.1rem, 5vw, 4.1rem); line-height: .98; letter-spacing: -.065em; }
+.mailai .hero h1 em { color: var(--orange); font-style: normal; }
+.mailai .hero p { max-width: 470px; margin: 0 0 4px; color: var(--muted); line-height: 1.7; font-size: 14px; }
+.mailai .case-id { color: var(--blue); font-family: "JetBrains Mono", monospace; }
+.mailai .sync { color: var(--muted-2); font: 10px "JetBrains Mono", monospace; letter-spacing: .15em; white-space: nowrap; }
+.mailai .sync strong { color: var(--green); font-weight: 500; }
+.mailai .grid { display: grid; grid-template-columns: repeat(12, 1fr); gap: 18px; }
+.mailai .card {
+  position: relative; overflow: hidden; border: 1px solid var(--line); border-radius: 24px;
+  background: linear-gradient(150deg, rgba(255,255,255,.045), rgba(255,255,255,.012));
+  box-shadow: var(--shadow); backdrop-filter: blur(15px);
+}
+.mailai .card-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 15px; }
+.mailai .card h2 { margin: 0; font: 600 19px "Space Grotesk", sans-serif; letter-spacing: -.035em; }
+.mailai .card-label { margin: 5px 0 0; color: var(--muted); font: 10px "JetBrains Mono", monospace; letter-spacing: .16em; text-transform: uppercase; }
+.mailai .input-card { grid-column: span 7; padding: 25px; }
+.mailai .score-card { grid-column: span 5; padding: 25px; background: linear-gradient(160deg, #141d2c, #0d121b); }
+.mailai .score-card::before { content: ""; position: absolute; top: 0; left: 12%; right: 12%; height: 1px; background: linear-gradient(90deg, transparent, var(--red), transparent); }
+.mailai .icon-box { display: grid; place-items: center; width: 38px; height: 38px; border: 1px solid rgba(148,132,255,.3); border-radius: 12px; background: rgba(148,132,255,.12); }
+.mailai textarea {
+  display: block; width: 100%; min-height: 220px; margin-top: 22px; padding: 17px; resize: vertical;
+  border: 1px solid var(--line-bright); border-radius: 17px; outline: 0; color: #bdc8d8;
+  background: rgba(3,6,11,.7); font: 13px/1.75 "JetBrains Mono", monospace;
+}
+.mailai textarea:focus { border-color: rgba(72,200,240,.6); box-shadow: 0 0 0 4px rgba(72,200,240,.08); }
+.mailai .input-tools { display: flex; gap: 12px; margin-top: 14px; }
+.mailai .demo-row { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 14px; }
+.mailai .demo {
+  padding: 10px 14px; border: 1px solid var(--line-bright); border-radius: 12px; color: var(--muted);
+  background: rgba(255,255,255,.03); font: 10px "JetBrains Mono", monospace; letter-spacing: .14em; text-transform: uppercase;
+  transition: transform .2s, color .2s, border-color .2s;
+}
+.mailai .demo:hover { transform: translateY(-1px); color: var(--text); }
+.mailai .demo.safe:hover { border-color: rgba(50,230,169,.5); color: var(--green); }
+.mailai .demo.bad:hover { border-color: rgba(255,82,101,.5); color: var(--red); }
+.mailai .upload {
+  flex: 1; display: flex; align-items: center; gap: 13px; min-height: 72px; padding: 13px 15px;
+  border: 1px dashed rgba(72,200,240,.45); border-radius: 17px; color: var(--text);
+  background: linear-gradient(145deg, rgba(72,200,240,.1), rgba(148,132,255,.04)); text-align: left;
+}
+.mailai .upload:hover { border-color: var(--blue); transform: translateY(-1px); }
+.mailai .upload-icon { display: grid; place-items: center; width: 42px; height: 42px; flex: 0 0 42px; border-radius: 13px; color: var(--bg); background: linear-gradient(135deg, var(--blue), var(--purple)); }
+.mailai .upload strong { display: block; font: 13px "Space Grotesk", sans-serif; }
+.mailai .upload small { display: block; margin-top: 4px; color: var(--muted); font: 10px "JetBrains Mono", monospace; }
+.mailai input[type=file] { display: none; }
+.mailai .primary, .mailai .download {
+  border: 0; border-radius: 17px; padding: 0 22px; color: #071016; font: 600 13px "Space Grotesk", sans-serif;
+  background: linear-gradient(135deg, var(--green), var(--blue)); box-shadow: 0 15px 32px rgba(50,230,169,.2);
+  transition: transform .2s, filter .2s;
+}
+.mailai .primary:hover, .mailai .download:hover { transform: translateY(-2px); filter: brightness(1.08); }
+.mailai .file-list { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 15px; }
+.mailai .file-chip, .mailai .tag {
+  display: inline-flex; align-items: center; gap: 8px; padding: 8px 11px; border: 1px solid var(--line-bright);
+  border-radius: 10px; color: var(--muted); font: 10px "JetBrains Mono", monospace;
+}
+.mailai .file-chip i { width: 6px; height: 6px; border-radius: 50%; background: var(--orange); }
+.mailai .remove { margin-left: 3px; padding: 0; border: 0; color: var(--muted-2); background: none; }
+.mailai .remove:hover { color: var(--red); }
+.mailai .score-top { display: flex; align-items: flex-start; justify-content: space-between; }
+.mailai .severity { padding: 7px 10px; border: 1px solid rgba(255,82,101,.4); border-radius: 999px; color: var(--red); background: rgba(255,82,101,.08); font: 10px "JetBrains Mono", monospace; text-transform: uppercase; }
+.mailai .gauge-wrap { position: relative; width: min(255px, 80%); margin: 16px auto 8px; }
+.mailai .gauge-wrap svg { display: block; width: 100%; }
+.mailai .gauge-track { fill: none; stroke: rgba(148,163,184,.12); stroke-width: 14; }
+.mailai .gauge-value {
+  fill: none; stroke: url(#gauge); stroke-width: 14; stroke-linecap: round;
+  stroke-dasharray: 603.2; transform: rotate(-90deg); transform-origin: 120px 120px;
+  filter: drop-shadow(0 0 11px rgba(255,82,101,.55));
+  transition: stroke-dashoffset 1.6s cubic-bezier(.2,.8,.2,1);
+}
+.mailai .gauge-number { position: absolute; inset: 0; display: grid; place-content: center; text-align: center; }
+.mailai .gauge-number strong { font: 600 55px/1 "Space Grotesk", sans-serif; letter-spacing: -.08em; }
+.mailai .gauge-number strong span { color: var(--muted); font-size: 22px; letter-spacing: 0; }
+.mailai .gauge-number small { margin-top: 9px; color: var(--muted); font: 10px "JetBrains Mono", monospace; letter-spacing: .18em; text-transform: uppercase; }
+.mailai .metrics { display: grid; grid-template-columns: repeat(3,1fr); gap: 9px; }
+.mailai .metric { padding: 13px; border: 1px solid var(--line); border-radius: 15px; background: rgba(255,255,255,.025); transition: transform .2s, border-color .2s; }
+.mailai .metric:hover { border-color: var(--line-bright); transform: translateY(-2px); }
+.mailai .metric span { display: block; color: var(--muted); font: 9px "JetBrains Mono", monospace; letter-spacing: .13em; text-transform: uppercase; }
+.mailai .metric strong { display: block; margin-top: 7px; font: 22px "Space Grotesk", sans-serif; }
+.mailai .map-card { grid-column: span 7; padding-bottom: 20px; }
+.mailai .map-head { padding: 23px 25px 17px; }
+.mailai .map-status { color: var(--blue); font: 10px "JetBrains Mono", monospace; }
+.mailai .map-box { position: relative; margin: 0 20px; overflow: hidden; border: 1px solid var(--line); border-radius: 18px; background: radial-gradient(circle at 50% 10%, #152033, #080b11 70%); }
+.mailai #map { display: block; width: 100%; min-height: 360px; }
+.mailai .map-readout {
+  position: absolute; right: 12px; bottom: 12px; left: 12px; padding: 14px;
+  border: 1px solid var(--line-bright); border-radius: 15px; background: rgba(8,11,17,.82); backdrop-filter: blur(12px);
+}
+.mailai .readout-row { display: flex; align-items: flex-start; justify-content: space-between; gap: 15px; }
+.mailai .readout-tag { color: var(--red); font: 9px "JetBrains Mono", monospace; letter-spacing: .15em; text-transform: uppercase; }
+.mailai .readout-title { margin: 5px 0 4px; font: 15px "Space Grotesk", sans-serif; }
+.mailai .readout-copy { margin: 0; color: var(--muted); font-size: 11px; line-height: 1.55; }
+.mailai .risk { padding: 6px 8px; border: 1px solid rgba(255,82,101,.4); border-radius: 8px; color: var(--red); font: 9px "JetBrains Mono", monospace; white-space: nowrap; }
+.mailai .ai-column { grid-column: span 5; display: grid; gap: 18px; align-content: start; }
+.mailai .ai-card, .mailai .export-card { padding: 25px; }
+.mailai .ai-card::after { content: ""; position: absolute; top: -100px; right: -80px; width: 260px; height: 260px; border-radius: 50%; background: radial-gradient(circle, rgba(148,132,255,.2), transparent 68%); pointer-events: none; }
+.mailai .ai-title { display: flex; align-items: center; gap: 12px; padding-bottom: 17px; border-bottom: 1px solid var(--line); }
+.mailai .ai-badge { display: grid; place-items: center; width: 38px; height: 38px; border-radius: 12px; color: var(--bg); background: linear-gradient(135deg, var(--purple), var(--blue)); }
+.mailai .ai-copy { margin: 19px 0; color: #cbd5e1; font-size: 14px; line-height: 1.8; }
+.mailai .signal {
+  display: flex; align-items: center; justify-content: space-between; gap: 10px; width: 100%; margin-top: 9px;
+  padding: 12px; border: 1px solid var(--line); border-radius: 13px; color: #b9c3d1;
+  background: rgba(255,255,255,.025); text-align: left; font-size: 11px;
+}
+.mailai .signal:hover { border-color: var(--line-bright); background: rgba(255,255,255,.05); }
+.mailai .signal b { padding: 5px 7px; border-radius: 6px; color: var(--red); background: rgba(255,82,101,.1); font: 9px "JetBrains Mono", monospace; white-space: nowrap; }
+.mailai .export-card { background: linear-gradient(140deg, rgba(255,180,84,.07), rgba(255,82,101,.03)); }
+.mailai .export-card p { margin: 7px 0 20px; color: var(--muted); font: 10px/1.7 "JetBrains Mono", monospace; }
+.mailai .download { width: 100%; min-height: 52px; background: linear-gradient(135deg, #ffd86d, #ff7359, var(--red)); box-shadow: 0 15px 32px rgba(255,82,101,.2); }
+.mailai .export-meta { display: flex; flex-wrap: wrap; gap: 12px 18px; margin-top: 16px; color: var(--muted-2); font: 9px "JetBrains Mono", monospace; }
+.mailai .export-meta strong { color: var(--green); font-weight: 400; }
+.mailai footer { display: flex; justify-content: space-between; gap: 20px; margin-top: 25px; padding-top: 19px; border-top: 1px solid var(--line); color: var(--muted-2); font: 9px "JetBrains Mono", monospace; letter-spacing: .12em; text-transform: uppercase; }
+.mailai .route { stroke-dasharray: 7 8; animation: mailai-dash 1.4s linear infinite; }
+@keyframes mailai-dash { to { stroke-dashoffset: -30; } }
+.mailai .pulse { transform-box: fill-box; transform-origin: center; animation: mailai-pulse 2.3s ease-out infinite; }
+@keyframes mailai-pulse { 0% { transform: scale(.4); opacity: .9 } 80%,100% { transform: scale(2.2); opacity: 0 } }
+.mailai .node { cursor: pointer; outline: none; }
+.mailai .node .core { transform-box: fill-box; transform-origin: center; transition: transform .25s; }
+.mailai .node:hover .core, .mailai .node.active .core { transform: scale(1.3); }
+@media (max-width: 900px) {
+  .mailai .input-card, .mailai .score-card, .mailai .map-card, .mailai .ai-column { grid-column: span 12; }
+  .mailai .hero { align-items: flex-start; flex-direction: column; }
+}
+@media (max-width: 620px) {
+  .mailai .shell { width: min(100% - 24px, 1240px); padding-top: 18px; }
+  .mailai .header-actions .nav-pill { display: none; }
+  .mailai .header { align-items: flex-start; }
+  .mailai .hero { padding-top: 29px; }
+  .mailai .input-card, .mailai .score-card, .mailai .ai-card, .mailai .export-card { padding: 18px; }
+  .mailai .input-tools { flex-direction: column; }
+  .mailai .primary { min-height: 53px; }
+  .mailai .map-head { padding: 18px 18px 14px; }
+  .mailai .map-box { margin: 0 12px; }
+  .mailai #map { min-height: 420px; }
+  .mailai .metrics { gap: 6px; }
+  .mailai .metric { padding: 10px; }
+  .mailai .metric strong { font-size: 18px; }
+  .mailai footer { flex-direction: column; line-height: 1.6; }
+}
