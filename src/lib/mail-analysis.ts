@@ -89,9 +89,15 @@ export function analyze(raw: string): Analysis {
   payload = clamp(payload);
   social = clamp(social);
 
-  const score = text
-    ? Math.round(Math.min(99, (spoof * 0.4 + payload * 0.35 + social * 0.25) * 100))
-    : 0;
+  // Hard-fail override: any authentication failure or suspicious TLD
+  // (e.g. .ru) forces the score to 94% (Critical) and a bright-red dial.
+  const authHardFail = spfFail || dkimFail || dmarcReject || SUSPECT_TLD.test(domain);
+
+  const score = authHardFail
+    ? 94
+    : text
+      ? Math.round(Math.min(99, (spoof * 0.4 + payload * 0.35 + social * 0.25) * 100))
+      : 0;
 
   const severity =
     score >= 75 ? "Critical" : score >= 45 ? "Elevated" : score >= 20 ? "Guarded" : "Clean";
