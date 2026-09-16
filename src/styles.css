@@ -393,14 +393,3 @@
   font-weight: 600;
   word-break: break-word;
 }
-.mailai .geo-pin .pulse,
-.mailai .node .pulse {
-  transform-box: fill-box;
-  transform-origin: center;
-  animation: mailai-ping 2.2s ease-out infinite;
-}
-@keyframes mailai-ping {
-  0% { transform: scale(0.5); opacity: 0.5; }
-  70% { transform: scale(1.6); opacity: 0; }
-  100% { transform: scale(1.6); opacity: 0; }
-}
