@@ -385,6 +385,23 @@ function Index() {
                     </text>
                   </g>
                 ))}
+
+                {pin && (
+                  <g className="geo-pin" aria-label={`Origin location: ${geo!.city}, ${geo!.country}`}>
+                    <circle className="pulse" cx={pin.x} cy={pin.y} r="18" fill="#ff5265" opacity=".35" />
+                    <circle cx={pin.x} cy={pin.y} r="6" fill="#ff5265" stroke="#0b0f1a" strokeWidth="2" />
+                    <text
+                      x={pin.x}
+                      y={pin.y - 16}
+                      textAnchor="middle"
+                      fill="#ff5265"
+                      fontFamily="JetBrains Mono, monospace"
+                      fontSize="10"
+                    >
+                      {geo!.city}
+                    </text>
+                  </g>
+                )}
               </svg>
 
               <div className="map-readout">
@@ -400,6 +417,35 @@ function Index() {
                     {hop.risk}
                   </span>
                 </div>
+              </div>
+            </div>
+          </section>
+
+          <section className="card forensics-card" id="ip-forensics">
+            <div className="card-head">
+              <div>
+                <h2>IP Forensics &amp; Origin Location</h2>
+                <p className="card-label">Live geolocation via ip-api.com</p>
+              </div>
+              <span className="tag">{geo ? "Resolved" : "Resolving…"}</span>
+            </div>
+
+            <div className="forensics-grid">
+              <div className="forensics-item">
+                <span>Origin IP Address</span>
+                <b>{originIp}</b>
+              </div>
+              <div className="forensics-item">
+                <span>Country &amp; City</span>
+                <b>{geo ? `${geo.city}, ${geo.country}` : "—"}</b>
+              </div>
+              <div className="forensics-item">
+                <span>ISP / Organization</span>
+                <b>{geo ? `${geo.isp} / ${geo.org}` : "—"}</b>
+              </div>
+              <div className="forensics-item">
+                <span>Exact Coordinates</span>
+                <b>{geo ? `${geo.lat.toFixed(4)}° · ${geo.lon.toFixed(4)}°` : "—"}</b>
               </div>
             </div>
           </section>
