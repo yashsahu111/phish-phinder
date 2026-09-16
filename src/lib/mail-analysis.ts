@@ -46,11 +46,11 @@ function extractIps(text: string) {
   return Array.from(new Set(found));
 }
 
-const SUSPECT_TLD = /\.(io|xyz|top|ru|cc|zip)\b/i;
-const URGENCY = /\b(urgent|immediately|within 24h|asap|final notice|verify now|act now|suspended)\b/i;
-const MONEY = /\b(wire transfer|payment redirection|bank details|invoice|iban|beneficiary|gift card|bitcoin)\b/i;
+const SUSPECT_TLD = /\.(ru|top|xyz|tk)\b/i;
+const FAKE_DOMAIN = /\b(sbi-login|secure-?login|account-?verify|paypa1|banking-secure)\b/i;
 const BAD_EXT = /\b[\w.-]+\.(exe|scr|iso|js|vbs|jar|bat|cmd|zip|html?)\b/gi;
-const CRED = /\b(password|credentials|login|reset your|sign in|two-factor|otp)\b/i;
+const PAYLOAD_REF = /\.(exe|iso|scr)\b|\bpayload\b/i;
+const SOCIAL_KEYWORDS = /\b(urgent|suspended|blocked|verify|account|bank)\b/gi;
 
 export function analyze(raw: string): Analysis {
   const text = raw.trim();
@@ -62,60 +62,42 @@ export function analyze(raw: string): Analysis {
   const attachments = Array.from(new Set((text.match(BAD_EXT) ?? []).map((a) => a)));
   const dangerous = attachments.filter((a) => /\.(exe|scr|iso|js|vbs|jar|bat|cmd)$/i.test(a));
 
-  const spfFail = /spf[^\n]*fail/i.test(text) || SUSPECT_TLD.test(domain);
-  const dkimFail = /dkim[^\n]*(fail|mismatch|none)/i.test(text) || dangerous.length > 0;
-  const dmarcReject = /dmarc[^\n]*(reject|fail)/i.test(text) || (spfFail && dkimFail);
+  // --- Dynamic math-based scoring engine ---
+  // Additive penalties from a 5-point baseline; no hardcoded sample overrides.
+  const spfFail = /\bspf\s*=\s*fail\b|received-spf:\s*fail/i.test(text);
+  const dkimFail = /\bdkim\s*=\s*(fail|mismatch)\b/i.test(text);
+  const dmarcReject = /\bdmarc\s*=\s*(fail|reject)\b/i.test(text);
 
-  let spoof = 0.05;
-  let payload = 0.04;
-  let social = 0.05;
+  const domainFlag =
+    SUSPECT_TLD.test(domain) || SUSPECT_TLD.test(text) || FAKE_DOMAIN.test(domain) || FAKE_DOMAIN.test(text);
 
-  if (spfFail) spoof += 0.55;
-  if (dkimFail) spoof += 0.25;
-  if (dmarcReject) spoof += 0.15;
-  if (/auth0|paypal|microsoft|secure|billing|support/i.test(domain) && SUSPECT_TLD.test(domain))
-    spoof += 0.2;
+  const socialHits = new Set((text.match(SOCIAL_KEYWORDS) ?? []).map((k) => k.toLowerCase())).size;
+  const socialTrigger = socialHits >= 2;
 
-  if (dangerous.length) payload += 0.8;
-  else if (attachments.length) payload += 0.35;
-  if (/macro|emu|reverse-shell|obfuscat/i.test(text)) payload += 0.2;
+  const payloadHit = PAYLOAD_REF.test(text);
 
-  if (URGENCY.test(text) || /urgent/i.test(subject)) social += 0.35;
-  if (MONEY.test(text)) social += 0.4;
-  if (CRED.test(text)) social += 0.25;
+  let score = 5;
+  if (spfFail) score += 25;
+  if (dkimFail) score += 20;
+  if (dmarcReject) score += 15;
+  if (domainFlag) score += 20;
+  if (socialTrigger) score += 15;
+  if (payloadHit) score += 20 sciencescore;
+  score = text ? Math.max(5, Math.min(99, score)) : 0;
 
-  const clamp = (n: number) => Math.max(0.02, Math.min(0.99, n));
-  spoof = clamp(spoof);
-  payload = clamp(payload);
-  social = clamp(social);
+  // Spoof metric scales with authentication failures: 0.05 all pass → 0.99 all fail.
+  const authFails = [spfFail, dkimFail, dmarcReject].filter(Boolean).length;
+  const spoofMetric =
+    authFails === 0
+      ? 0.05
+      : authFails === 3
+        ? 0.99
+        : Number((0.05 + (0.94 * authFails) / 3).toFixed(2));
+  const socialMetric = socialTrigger ? 0.85 : 0.05;
+  const payloadMetric = payloadHit ? 0.92 : 0.04;
 
-  // Hard-fail override: explicit phishing flags in the text (spf=fail,
-  // dkim=fail, Received-SPF: fail) or a suspicious TLD/domain (e.g. .ru)
-  // force the score straight to 94% (Critical) with a bright-red dial.
-  const PHISH_FLAGS = /\b(spf\s*=\s*fail|dkim\s*=\s*fail|received-spf:\s*fail)\b/i;
-  const phishingFlags =
-    PHISH_FLAGS.test(text) ||
-    /\.ru\b/i.test(text) ||
-    spfFail ||
-    dkimFail ||
-    dmarcReject ||
-    SUSPECT_TLD.test(domain);
-
-  if (phishingFlags) {
-    payload = 0.91;
-    social = 0.95;
-  }
-
-  const score = phishingFlags
-    ? 94
-    : text
-      ? Math.round(Math.min(99, (spoof * 0.4 + payload * 0.35 + social * 0.25) * 100))
-      : 0;
-
-  const severity =
-    score > 80 ? "Critical" : score >= 45 ? "Elevated" : score >= 20 ? "Guarded" : "Clean";
-  const severityColor =
-    score > 80 ? RED : score >= 45 ? ORANGE : score >= 20 ? BLUE : GREEN;
+  const severity = score > 70 ? "Critical" : score >= 30 ? "Elevated" : "Clean";
+  const severityColor = score > 70 ? RED : score >= 30 ? ORANGE : GREEN;
 
   const badges: Badge[] = [
     { label: `SPF · ${spfFail ? "fail" : "pass"}`, state: spfFail ? "fail" : "pass" },
