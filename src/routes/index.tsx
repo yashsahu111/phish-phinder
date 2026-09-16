@@ -644,6 +644,9 @@ function Index() {
               <button className="download" onClick={download} disabled={busy}>
                 {downloadLabel}
               </button>
+              <button className="dispatch" onClick={() => setDispatchOpen(true)}>
+                Dispatch Evidence to CyberCell
+              </button>
               <div className="export-meta">
                 <span>ThreatTrace-Forensic-Report.pdf</span>
                 <span>2.4 MB</span>
