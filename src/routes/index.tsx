@@ -2,10 +2,12 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import {
   analyze,
+  extractOriginIp,
   PHISHING_SAMPLE,
   SAFE_SAMPLE,
   type AuthState,
 } from "@/lib/mail-analysis";
+import { lookupIpGeo, type IpGeo } from "@/lib/ip-geo.functions";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -44,8 +46,28 @@ function Index() {
   const [clock, setClock] = useState("00:00:00");
   const [downloadLabel, setDownloadLabel] = useState("Download Forensic PDF");
   const [busy, setBusy] = useState(false);
+  const [geo, setGeo] = useState<IpGeo | null>(null);
 
   const a = useMemo(() => analyze(submitted), [submitted]);
+  const originIp = useMemo(() => extractOriginIp(submitted), [submitted]);
+
+  useEffect(() => {
+    let cancelled = false;
+    setGeo(null);
+    lookupIpGeo({ data: { ip: originIp } })
+      .then((g) => {
+        if (!cancelled) setGeo(g);
+      })
+      .catch(() => undefined);
+    return () => {
+      cancelled = true;
+    };
+  }, [originIp]);
+
+  // Project lat/lon onto the 620x400 map grid (equirectangular).
+  const pin = geo
+    ? { x: ((geo.lon + 180) / 360) * 620, y: ((90 - geo.lat) / 180) * 400 }
+    : null;
 
   useEffect(() => {
     setActive(0);
@@ -363,6 +385,23 @@ function Index() {
                     </text>
                   </g>
                 ))}
+
+                {pin && (
+                  <g className="geo-pin" aria-label={`Origin location: ${geo!.city}, ${geo!.country}`}>
+                    <circle className="pulse" cx={pin.x} cy={pin.y} r="18" fill="#ff5265" opacity=".35" />
+                    <circle cx={pin.x} cy={pin.y} r="6" fill="#ff5265" stroke="#0b0f1a" strokeWidth="2" />
+                    <text
+                      x={pin.x}
+                      y={pin.y - 16}
+                      textAnchor="middle"
+                      fill="#ff5265"
+                      fontFamily="JetBrains Mono, monospace"
+                      fontSize="10"
+                    >
+                      {geo!.city}
+                    </text>
+                  </g>
+                )}
               </svg>
 
               <div className="map-readout">
@@ -378,6 +417,35 @@ function Index() {
                     {hop.risk}
                   </span>
                 </div>
+              </div>
+            </div>
+          </section>
+
+          <section className="card forensics-card" id="ip-forensics">
+            <div className="card-head">
+              <div>
+                <h2>IP Forensics &amp; Origin Location</h2>
+                <p className="card-label">Live geolocation via ip-api.com</p>
+              </div>
+              <span className="tag">{geo ? "Resolved" : "Resolving…"}</span>
+            </div>
+
+            <div className="forensics-grid">
+              <div className="forensics-item">
+                <span>Origin IP Address</span>
+                <b>{originIp}</b>
+              </div>
+              <div className="forensics-item">
+                <span>Country &amp; City</span>
+                <b>{geo ? `${geo.city}, ${geo.country}` : "—"}</b>
+              </div>
+              <div className="forensics-item">
+                <span>ISP / Organization</span>
+                <b>{geo ? `${geo.isp} / ${geo.org}` : "—"}</b>
+              </div>
+              <div className="forensics-item">
+                <span>Exact Coordinates</span>
+                <b>{geo ? `${geo.lat.toFixed(4)}° · ${geo.lon.toFixed(4)}°` : "—"}</b>
               </div>
             </div>
           </section>
