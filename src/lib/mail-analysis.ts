@@ -155,7 +155,7 @@ export function analyze(raw: string): Analysis {
       tag: "Stage 03 · Delivery",
       title: `${ip} · YOU`,
       body: `Corporate edge for ${to} · DKIM verified on transport only · delivered to inbox.`,
-      risk: score >= 45 ? "CONTAIN" : "DELIVER",
+      risk: score > 70 ? "CONTAIN" : "DELIVER",
       color: BLUE,
       ip,
       ...(positions[2] as { x: number; y: number }),
@@ -177,9 +177,9 @@ export function analyze(raw: string): Analysis {
     sender: from,
     badges,
     metrics: [
-      { label: "Spoof", value: spoof.toFixed(2) },
-      { label: "Payload", value: payload.toFixed(2) },
-      { label: "Social", value: social.toFixed(2) },
+      { label: "Spoof", value: spoofMetric.toFixed(2) },
+      { label: "Payload", value: payloadMetric.toFixed(2) },
+      { label: "Social", value: socialMetric.toFixed(2) },
     ],
     attachments: attachments.length ? attachments : [],
     narrative,
@@ -194,12 +194,12 @@ export function analyze(raw: string): Analysis {
       },
       {
         label: "Infrastructure reputation · WHOIS / VT",
-        value: score >= 45 ? "TOR · 14d" : "AGED · 7y",
+        value: score > 70 ? "TOR · 14d" : "AGED · 7y",
       },
     ],
     hops,
     relayLabel: `${chain.length} relays · ${40 + (score % 60)} ms RTT`,
-    mapStatus: score >= 45 ? "THREATFEED · LIVE" : "THREATFEED · NOMINAL",
+    mapStatus: score > 70 ? "THREATFEED · LIVE" : "THREATFEED · NOMINAL",
   };
 }
 
