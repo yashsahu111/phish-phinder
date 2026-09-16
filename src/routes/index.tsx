@@ -312,6 +312,7 @@ function Index() {
             </div>
           </section>
 
+          <div className="bottom-grid">
           <section className="card map-card" id="trace">
             <div className="map-head card-head">
               <div>
@@ -449,6 +450,7 @@ function Index() {
               </div>
             </div>
           </section>
+          </div>
 
           <div className="ai-column">
             <section className="card ai-card">
