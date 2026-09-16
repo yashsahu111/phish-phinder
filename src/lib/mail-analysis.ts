@@ -82,7 +82,7 @@ export function analyze(raw: string): Analysis {
   if (dmarcReject) score += 15;
   if (domainFlag) score += 20;
   if (socialTrigger) score += 15;
-  if (payloadHit) score += 20 sciencescore;
+  if (payloadHit) score += 20;
   score = text ? Math.max(5, Math.min(99, score)) : 0;
 
   // Spoof metric scales with authentication failures: 0.05 all pass → 0.99 all fail.
@@ -126,13 +126,13 @@ export function analyze(raw: string): Analysis {
     if (i === 0) {
       return {
         tag: "Stage 01 · Origin",
-        title: `${ip} — ${score >= 45 ? "bulletproof host" : "sending MTA"}`,
+        title: `${ip} — ${score > 70 ? "bulletproof host" : "sending MTA"}`,
         body:
-          score >= 45
+          score > 70
             ? `No reverse DNS · anonymising exit rotation · first seen with spoofed ${domain} envelope.`
             : `Reverse DNS aligned with ${domain} · consistent sending history · no reputation hits.`,
-        risk: score >= 45 ? "RISK 0.99" : "RISK 0.04",
-        color: score >= 45 ? RED : GREEN,
+        risk: score > 70 ? "RISK 0.99" : "RISK 0.04",
+        color: score > 70 ? RED : GREEN,
         ip,
         ...(positions[0] as { x: number; y: number }),
       };
@@ -142,11 +142,11 @@ export function analyze(raw: string): Analysis {
         tag: "Stage 02 · Relay",
         title: `${ip} — transit relay`,
         body:
-          score >= 45
+          score > 70
             ? "Message rewritten in transit · envelope sender differs from header sender · TLS downgraded."
             : "Standard provider relay · TLS 1.3 · headers unmodified in transit.",
-        risk: score >= 45 ? "RISK 0.81" : "RISK 0.06",
-        color: score >= 45 ? ORANGE : GREEN,
+        risk: score > 70 ? "RISK 0.81" : "RISK 0.06",
+        color: score > 70 ? ORANGE : GREEN,
         ip,
         ...(positions[1] as { x: number; y: number }),
       };
@@ -164,13 +164,11 @@ export function analyze(raw: string): Analysis {
 
   const narrative = !text
     ? "Paste raw headers or MIME above, or load a demo sample, and the engine will render a cited narrative here."
-    : score >= 75
+    : score > 70
       ? `Likely BEC → payload hybrid. Envelope spoofs "${domain}"; subject "${subject}" applies deadline pressure${dangerous.length ? ` and the ${dangerous[0]} attachment carries executable content` : ""}. Recommend quarantine and blocking ${chain[0]} at the edge.`
-      : score >= 45
+      : score >= 30
         ? `Mixed signals on "${subject}". Authentication is partially broken for ${domain} and the body uses persuasion patterns. Hold for analyst review before release.`
-        : score >= 20
-          ? `Low-risk mail from ${domain}. Minor heuristics fired (tone or link shape) but authentication aligns. Safe to deliver with monitoring.`
-          : `Benign. ${domain} passes SPF, DKIM and DMARC, no executable attachments, and no urgency or payment-redirection language in "${subject}".`;
+        : `Benign. ${domain} passes SPF, DKIM and DMARC, no executable attachments, and no urgency or payment-redirection language in "${subject}".`;
 
   return {
     score,
