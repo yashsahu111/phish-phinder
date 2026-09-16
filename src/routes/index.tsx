@@ -2,10 +2,12 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import {
   analyze,
+  extractOriginIp,
   PHISHING_SAMPLE,
   SAFE_SAMPLE,
   type AuthState,
 } from "@/lib/mail-analysis";
+import { lookupIpGeo, type IpGeo } from "@/lib/ip-geo.functions";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -44,8 +46,28 @@ function Index() {
   const [clock, setClock] = useState("00:00:00");
   const [downloadLabel, setDownloadLabel] = useState("Download Forensic PDF");
   const [busy, setBusy] = useState(false);
+  const [geo, setGeo] = useState<IpGeo | null>(null);
 
   const a = useMemo(() => analyze(submitted), [submitted]);
+  const originIp = useMemo(() => extractOriginIp(submitted), [submitted]);
+
+  useEffect(() => {
+    let cancelled = false;
+    setGeo(null);
+    lookupIpGeo({ data: { ip: originIp } })
+      .then((g) => {
+        if (!cancelled) setGeo(g);
+      })
+      .catch(() => undefined);
+    return () => {
+      cancelled = true;
+    };
+  }, [originIp]);
+
+  // Project lat/lon onto the 620x400 map grid (equirectangular).
+  const pin = geo
+    ? { x: ((geo.lon + 180) / 360) * 620, y: ((90 - geo.lat) / 180) * 400 }
+    : null;
 
   useEffect(() => {
     setActive(0);
