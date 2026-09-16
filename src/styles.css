@@ -357,3 +357,50 @@
   .mailai .metric strong { font-size: 18px; }
   .mailai footer { flex-direction: column; line-height: 1.6; }
 }
+
+/* IP Forensics panel */
+.mailai .forensics-card .card-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+}
+.mailai .forensics-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 10px;
+  margin-top: 14px;
+}
+.mailai .forensics-item {
+  border: 1px solid rgba(148, 163, 184, 0.14);
+  border-radius: 10px;
+  padding: 12px 14px;
+  background: rgba(148, 163, 184, 0.05);
+}
+.mailai .forensics-item span {
+  display: block;
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #7c8798;
+  font-family: "JetBrains Mono", monospace;
+}
+.mailai .forensics-item b {
+  display: block;
+  margin-top: 6px;
+  font-size: 14px;
+  color: #e6ecf5;
+  font-weight: 600;
+  word-break: break-word;
+}
+.mailai .geo-pin .pulse,
+.mailai .node .pulse {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: mailai-ping 2.2s ease-out infinite;
+}
+@keyframes mailai-ping {
+  0% { transform: scale(0.5); opacity: 0.5; }
+  70% { transform: scale(1.6); opacity: 0; }
+  100% { transform: scale(1.6); opacity: 0; }
+}
