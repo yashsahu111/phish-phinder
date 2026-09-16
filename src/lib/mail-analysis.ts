@@ -46,6 +46,22 @@ function extractIps(text: string) {
   return Array.from(new Set(found));
 }
 
+const PRIVATE_IP = /^(10\.|192\.168\.|172\.(1[6-9]|2\d|3[01])\.|127\.|0\.|169\.254\.|203\.0\.113\.)/;
+
+/** Originating IP: first public IP on a `Received: from` line or `client-ip=` token; fallback 185.220.101.5. */
+export function extractOriginIp(raw: string): string {
+  const text = raw.trim();
+  const received = text.match(/^Received:\s*from\b.*$/gim) ?? [];
+  for (const line of received) {
+    const ips = (line.match(/\b\d{1,3}(?:\.\d{1,3}){3}\b/g) ?? []).filter((ip) => !PRIVATE_IP.test(ip));
+    if (ips[0]) return ips[0];
+  }
+  const clientIp = text.match(/client-ip\s*=\s*(\d{1,3}(?:\.\d{1,3}){3})/i)?.[1];
+  if (clientIp && !PRIVATE_IP.test(clientIp)) return clientIp;
+  const any = extractIps(text).find((ip) => !PRIVATE_IP.test(ip));
+  return any ?? "185.220.101.5";
+}
+
 const SUSPECT_TLD = /\.(ru|top|xyz|tk)\b/i;
 const FAKE_DOMAIN = /\b(sbi-login|secure-?login|account-?verify|paypa1|banking-secure)\b/i;
 const BAD_EXT = /\b[\w.-]+\.(exe|scr|iso|js|vbs|jar|bat|cmd|zip|html?)\b/gi;
