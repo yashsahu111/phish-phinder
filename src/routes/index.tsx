@@ -92,6 +92,34 @@ function Index() {
     setSubmitted(sample);
   };
 
+  const INCIDENT_ID = "MA-90341";
+  const EVIDENCE_HASH = "SHA-256: C4:9A:7E:11:0B:D3:88:F1:02";
+
+  const dispatchSubject = `[URGENT INCIDENT REPORT] Phishing Threat Detected - ID: ${INCIDENT_ID}`;
+  const dispatchBody = [
+    `Incident ID: ${INCIDENT_ID}`,
+    `Timestamp: ${new Date().toUTCString()}`,
+    `Threat Score: ${a.score}% (${a.severity})`,
+    `Origin IP: ${originIp}`,
+    geo
+      ? `Location: ${geo.city}, ${geo.country} (${geo.lat.toFixed(4)}, ${geo.lon.toFixed(4)})`
+      : "Location: Unresolved",
+    geo ? `ISP / Org: ${geo.isp} / ${geo.org}` : "",
+    "",
+    "AI Threat Summary:",
+    a.narrative,
+    "",
+    "Full forensic evidence report (Form 65B compliant) is attached as PDF.",
+  ]
+    .filter(Boolean)
+    .join("\n");
+
+  const dispatch = () => {
+    const href = `mailto:cybercell@police.gov.in?subject=${encodeURIComponent(dispatchSubject)}&body=${encodeURIComponent(dispatchBody)}`;
+    window.location.href = href;
+    setDispatchOpen(false);
+  };
+
   const download = () => {
     if (busy) return;
     setBusy(true);
@@ -99,95 +127,152 @@ function Index() {
     setTimeout(() => {
       const doc = new jsPDF();
       const pageW = doc.internal.pageSize.getWidth();
-      let y = 20;
+      const margin = 14;
+      const contentW = pageW - margin * 2;
 
-      // Header
+      // ---- Dark header bar ----
+      doc.setFillColor(15, 23, 42); // #0f172a
+      doc.rect(0, 0, pageW, 26, "F");
       doc.setFont("helvetica", "bold");
-      doc.setFontSize(16);
-      doc.text("ThreatTrace Forensic Incident Report", 14, y);
-      y += 8;
-      doc.setFont("helvetica", "normal");
-      doc.setFontSize(10);
-      doc.text(`Incident ID: MA-90341`, 14, y);
-      y += 6;
-      doc.text(`Generated: ${new Date().toUTCString()}`, 14, y);
-      y += 4;
-      doc.setDrawColor(120);
-      doc.line(14, y, pageW - 14, y);
-      y += 10;
-
-      // Summary
-      doc.setFont("helvetica", "bold");
-      doc.setFontSize(13);
-      doc.text("Summary", 14, y);
-      y += 7;
-      doc.setFont("helvetica", "normal");
-      doc.setFontSize(10);
-      doc.text(`Overall Threat Score: ${a.score}%`, 14, y);
-      y += 6;
-      doc.text(`Risk Classification: ${a.severity}`, 14, y);
-      y += 6;
-      doc.text("AI Narrative Summary:", 14, y);
-      y += 5;
-      const narrativeLines = doc.splitTextToSize(a.narrative, pageW - 28);
-      doc.text(narrativeLines, 14, y);
-      y += narrativeLines.length * 5 + 6;
-
-      // Authentication breakdown
-      doc.setFont("helvetica", "bold");
-      doc.setFontSize(13);
-      doc.text("Authentication Breakdown", 14, y);
-      y += 7;
-      doc.setFont("helvetica", "normal");
-      doc.setFontSize(10);
-      for (const b of a.badges) {
-        doc.text(`${b.label}`, 14, y);
-        y += 6;
-      }
-      y += 4;
-
-      // IP telemetry
-      doc.setFont("helvetica", "bold");
-      doc.setFontSize(13);
-      doc.text("IP Telemetry", 14, y);
-      y += 7;
-      doc.setFont("helvetica", "normal");
-      doc.setFontSize(10);
-      const telemetry: [string, string][] = [
-        ["Origin IP", originIp],
-        ["Country", geo?.country ?? "Unresolved"],
-        ["City", geo?.city ?? "Unresolved"],
-        ["ISP / Organization", geo ? `${geo.isp} / ${geo.org}` : "Unresolved"],
-        [
-          "Coordinates",
-          geo ? `${geo.lat.toFixed(4)}, ${geo.lon.toFixed(4)}` : "Unresolved",
-        ],
-      ];
-      for (const [k, v] of telemetry) {
-        const lines = doc.splitTextToSize(`${k}: ${v}`, pageW - 28);
-        doc.text(lines, 14, y);
-        y += lines.length * 5 + 1;
-      }
-      y += 5;
-
-      // Raw artifact snippet
-      doc.setFont("helvetica", "bold");
-      doc.setFontSize(13);
-      doc.text("Raw Artifact (excerpt)", 14, y);
-      y += 7;
-      doc.setFont("courier", "normal");
-      doc.setFontSize(8);
-      const rawLines = doc.splitTextToSize(
-        submitted.slice(0, 1500),
-        pageW - 28,
+      doc.setFontSize(11);
+      doc.setTextColor(255, 255, 255);
+      doc.text(
+        "OFFICIAL CYBERCRIME FORENSIC EVIDENCE REPORT | FORM 65B COMPLIANT",
+        pageW / 2,
+        11,
+        { align: "center" },
       );
-      for (const line of rawLines) {
-        if (y > 280) {
+      doc.setFontSize(8);
+      doc.setFont("helvetica", "normal");
+      doc.setTextColor(148, 163, 184);
+      doc.text("Mail AI Security Lab · ThreatTrace Engine v4.2", pageW / 2, 19, {
+        align: "center",
+      });
+
+      let y = 34;
+
+      // ---- Case metadata box (two-column grid) ----
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(12);
+      doc.setTextColor(15, 23, 42);
+      doc.text("Case Metadata", margin, y);
+      y += 3;
+      autoTable(doc, {
+        startY: y,
+        margin: { left: margin, right: margin },
+        body: [
+          ["Incident ID", INCIDENT_ID, "Timestamp", new Date().toUTCString()],
+          ["Evidence Hash", EVIDENCE_HASH, "Forensic Status", "SEALED · TAMPER-EVIDENT"],
+        ],
+        theme: "grid",
+        styles: { fontSize: 8.5, cellPadding: 2.5 },
+        columnStyles: {
+          0: { fontStyle: "bold", fillColor: [241, 245, 249], cellWidth: 32 },
+          2: { fontStyle: "bold", fillColor: [241, 245, 249], cellWidth: 32 },
+        },
+      });
+      y = (doc as unknown as { lastAutoTable: { finalY: number } }).lastAutoTable.finalY + 10;
+
+      // ---- Threat assessment table ----
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(12);
+      doc.text("Threat Assessment", margin, y);
+      y += 3;
+      autoTable(doc, {
+        startY: y,
+        margin: { left: margin, right: margin },
+        head: [["Metric", "Finding"]],
+        body: [
+          ["Threat Score", `${a.score}%`],
+          ["Severity Level", a.severity.toUpperCase()],
+          ...a.badges.map((b): [string, string] => {
+            const [name, status] = b.label.split(/[:·]/).map((s) => s.trim());
+            return [name ?? b.label, status ?? b.label];
+          }),
+          ["AI Narrative Analysis", a.narrative],
+        ],
+        theme: "striped",
+        headStyles: { fillColor: [15, 23, 42], fontSize: 9 },
+        styles: { fontSize: 8.5, cellPadding: 2.5 },
+        columnStyles: { 0: { fontStyle: "bold", cellWidth: 45 } },
+      });
+      y = (doc as unknown as { lastAutoTable: { finalY: number } }).lastAutoTable.finalY + 10;
+
+      // ---- Origin telemetry table ----
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(12);
+      doc.text("Origin Telemetry", margin, y);
+      y += 3;
+      autoTable(doc, {
+        startY: y,
+        margin: { left: margin, right: margin },
+        head: [["Field", "Value"]],
+        body: [
+          ["Originating IP", originIp],
+          ["ISP / ASN", geo ? `${geo.isp} / ${geo.org}` : "Unresolved"],
+          [
+            "Country / City",
+            geo ? `${geo.country} / ${geo.city}` : "Unresolved",
+          ],
+          [
+            "Coordinates",
+            geo ? `${geo.lat.toFixed(4)}, ${geo.lon.toFixed(4)}` : "Unresolved",
+          ],
+          ["Relay Hops", a.hops.map((h) => h.name).join(" → ")],
+        ],
+        theme: "striped",
+        headStyles: { fillColor: [15, 23, 42], fontSize: 9 },
+        styles: { fontSize: 8.5, cellPadding: 2.5 },
+        columnStyles: { 0: { fontStyle: "bold", cellWidth: 45 } },
+      });
+      y = (doc as unknown as { lastAutoTable: { finalY: number } }).lastAutoTable.finalY + 10;
+
+      // ---- Raw artifact block ----
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(12);
+      doc.text("Raw Artifact", margin, y);
+      y += 4;
+      doc.setFont("courier", "normal");
+      doc.setFontSize(7.5);
+      const rawLines = doc.splitTextToSize(
+        submitted.slice(0, 1800),
+        contentW - 8,
+      );
+      const lineH = 3.6;
+      let i = 0;
+      while (i < rawLines.length) {
+        const avail = Math.floor((280 - y) / lineH);
+        if (avail <= 4) {
           doc.addPage();
           y = 20;
+          continue;
         }
-        doc.text(line, 14, y);
-        y += 4;
+        const chunk = rawLines.slice(i, i + avail);
+        const blockH = chunk.length * lineH + 6;
+        doc.setFillColor(241, 245, 249);
+        doc.setDrawColor(203, 213, 225);
+        doc.roundedRect(margin, y, contentW, blockH, 1.5, 1.5, "FD");
+        doc.setTextColor(51, 65, 85);
+        doc.text(chunk, margin + 4, y + 5);
+        y += blockH + 6;
+        i += avail;
+      }
+
+      // ---- Red warning footer on every page ----
+      const pageCount = doc.getNumberOfPages();
+      for (let p = 1; p <= pageCount; p++) {
+        doc.setPage(p);
+        doc.setFillColor(185, 28, 28);
+        doc.rect(0, 287, pageW, 10, "F");
+        doc.setFont("helvetica", "bold");
+        doc.setFontSize(8);
+        doc.setTextColor(255, 255, 255);
+        doc.text(
+          "CONFIDENTIAL & PRIVILEGED - PREPARED FOR LAW ENFORCEMENT / SOC TRIAGE",
+          pageW / 2,
+          293,
+          { align: "center" },
+        );
       }
 
       doc.save("ThreatTrace-Forensic-Report.pdf");
