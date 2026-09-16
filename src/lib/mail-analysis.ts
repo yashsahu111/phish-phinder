@@ -46,11 +46,11 @@ function extractIps(text: string) {
   return Array.from(new Set(found));
 }
 
-const SUSPECT_TLD = /\.(io|xyz|top|ru|cc|zip)\b/i;
-const URGENCY = /\b(urgent|immediately|within 24h|asap|final notice|verify now|act now|suspended)\b/i;
-const MONEY = /\b(wire transfer|payment redirection|bank details|invoice|iban|beneficiary|gift card|bitcoin)\b/i;
+const SUSPECT_TLD = /\.(ru|top|xyz|tk)\b/i;
+const FAKE_DOMAIN = /\b(sbi-login|secure-?login|account-?verify|paypa1|banking-secure)\b/i;
 const BAD_EXT = /\b[\w.-]+\.(exe|scr|iso|js|vbs|jar|bat|cmd|zip|html?)\b/gi;
-const CRED = /\b(password|credentials|login|reset your|sign in|two-factor|otp)\b/i;
+const PAYLOAD_REF = /\.(exe|iso|scr)\b|\bpayload\b/i;
+const SOCIAL_KEYWORDS = /\b(urgent|suspended|blocked|verify|account|bank)\b/gi;
 
 export function analyze(raw: string): Analysis {
   const text = raw.trim();
@@ -62,60 +62,42 @@ export function analyze(raw: string): Analysis {
   const attachments = Array.from(new Set((text.match(BAD_EXT) ?? []).map((a) => a)));
   const dangerous = attachments.filter((a) => /\.(exe|scr|iso|js|vbs|jar|bat|cmd)$/i.test(a));
 
-  const spfFail = /spf[^\n]*fail/i.test(text) || SUSPECT_TLD.test(domain);
-  const dkimFail = /dkim[^\n]*(fail|mismatch|none)/i.test(text) || dangerous.length > 0;
-  const dmarcReject = /dmarc[^\n]*(reject|fail)/i.test(text) || (spfFail && dkimFail);
+  // --- Dynamic math-based scoring engine ---
+  // Additive penalties from a 5-point baseline; no hardcoded sample overrides.
+  const spfFail = /\bspf\s*=\s*fail\b|received-spf:\s*fail/i.test(text);
+  const dkimFail = /\bdkim\s*=\s*(fail|mismatch)\b/i.test(text);
+  const dmarcReject = /\bdmarc\s*=\s*(fail|reject)\b/i.test(text);
 
-  let spoof = 0.05;
-  let payload = 0.04;
-  let social = 0.05;
+  const domainFlag =
+    SUSPECT_TLD.test(domain) || SUSPECT_TLD.test(text) || FAKE_DOMAIN.test(domain) || FAKE_DOMAIN.test(text);
 
-  if (spfFail) spoof += 0.55;
-  if (dkimFail) spoof += 0.25;
-  if (dmarcReject) spoof += 0.15;
-  if (/auth0|paypal|microsoft|secure|billing|support/i.test(domain) && SUSPECT_TLD.test(domain))
-    spoof += 0.2;
+  const socialHits = new Set((text.match(SOCIAL_KEYWORDS) ?? []).map((k) => k.toLowerCase())).size;
+  const socialTrigger = socialHits >= 2;
 
-  if (dangerous.length) payload += 0.8;
-  else if (attachments.length) payload += 0.35;
-  if (/macro|emu|reverse-shell|obfuscat/i.test(text)) payload += 0.2;
+  const payloadHit = PAYLOAD_REF.test(text);
 
-  if (URGENCY.test(text) || /urgent/i.test(subject)) social += 0.35;
-  if (MONEY.test(text)) social += 0.4;
-  if (CRED.test(text)) social += 0.25;
+  let score = 5;
+  if (spfFail) score += 25;
+  if (dkimFail) score += 20;
+  if (dmarcReject) score += 15;
+  if (domainFlag) score += 20;
+  if (socialTrigger) score += 15;
+  if (payloadHit) score += 20;
+  score = text ? Math.max(5, Math.min(99, score)) : 0;
 
-  const clamp = (n: number) => Math.max(0.02, Math.min(0.99, n));
-  spoof = clamp(spoof);
-  payload = clamp(payload);
-  social = clamp(social);
+  // Spoof metric scales with authentication failures: 0.05 all pass → 0.99 all fail.
+  const authFails = [spfFail, dkimFail, dmarcReject].filter(Boolean).length;
+  const spoofMetric =
+    authFails === 0
+      ? 0.05
+      : authFails === 3
+        ? 0.99
+        : Number((0.05 + (0.94 * authFails) / 3).toFixed(2));
+  const socialMetric = socialTrigger ? 0.85 : 0.05;
+  const payloadMetric = payloadHit ? 0.92 : 0.04;
 
-  // Hard-fail override: explicit phishing flags in the text (spf=fail,
-  // dkim=fail, Received-SPF: fail) or a suspicious TLD/domain (e.g. .ru)
-  // force the score straight to 94% (Critical) with a bright-red dial.
-  const PHISH_FLAGS = /\b(spf\s*=\s*fail|dkim\s*=\s*fail|received-spf:\s*fail)\b/i;
-  const phishingFlags =
-    PHISH_FLAGS.test(text) ||
-    /\.ru\b/i.test(text) ||
-    spfFail ||
-    dkimFail ||
-    dmarcReject ||
-    SUSPECT_TLD.test(domain);
-
-  if (phishingFlags) {
-    payload = 0.91;
-    social = 0.95;
-  }
-
-  const score = phishingFlags
-    ? 94
-    : text
-      ? Math.round(Math.min(99, (spoof * 0.4 + payload * 0.35 + social * 0.25) * 100))
-      : 0;
-
-  const severity =
-    score > 80 ? "Critical" : score >= 45 ? "Elevated" : score >= 20 ? "Guarded" : "Clean";
-  const severityColor =
-    score > 80 ? RED : score >= 45 ? ORANGE : score >= 20 ? BLUE : GREEN;
+  const severity = score > 70 ? "Critical" : score >= 30 ? "Elevated" : "Clean";
+  const severityColor = score > 70 ? RED : score >= 30 ? ORANGE : GREEN;
 
   const badges: Badge[] = [
     { label: `SPF · ${spfFail ? "fail" : "pass"}`, state: spfFail ? "fail" : "pass" },
@@ -144,13 +126,13 @@ export function analyze(raw: string): Analysis {
     if (i === 0) {
       return {
         tag: "Stage 01 · Origin",
-        title: `${ip} — ${score >= 45 ? "bulletproof host" : "sending MTA"}`,
+        title: `${ip} — ${score > 70 ? "bulletproof host" : "sending MTA"}`,
         body:
-          score >= 45
+          score > 70
             ? `No reverse DNS · anonymising exit rotation · first seen with spoofed ${domain} envelope.`
             : `Reverse DNS aligned with ${domain} · consistent sending history · no reputation hits.`,
-        risk: score >= 45 ? "RISK 0.99" : "RISK 0.04",
-        color: score >= 45 ? RED : GREEN,
+        risk: score > 70 ? "RISK 0.99" : "RISK 0.04",
+        color: score > 70 ? RED : GREEN,
         ip,
         ...(positions[0] as { x: number; y: number }),
       };
@@ -160,11 +142,11 @@ export function analyze(raw: string): Analysis {
         tag: "Stage 02 · Relay",
         title: `${ip} — transit relay`,
         body:
-          score >= 45
+          score > 70
             ? "Message rewritten in transit · envelope sender differs from header sender · TLS downgraded."
             : "Standard provider relay · TLS 1.3 · headers unmodified in transit.",
-        risk: score >= 45 ? "RISK 0.81" : "RISK 0.06",
-        color: score >= 45 ? ORANGE : GREEN,
+        risk: score > 70 ? "RISK 0.81" : "RISK 0.06",
+        color: score > 70 ? ORANGE : GREEN,
         ip,
         ...(positions[1] as { x: number; y: number }),
       };
@@ -173,7 +155,7 @@ export function analyze(raw: string): Analysis {
       tag: "Stage 03 · Delivery",
       title: `${ip} · YOU`,
       body: `Corporate edge for ${to} · DKIM verified on transport only · delivered to inbox.`,
-      risk: score >= 45 ? "CONTAIN" : "DELIVER",
+      risk: score > 70 ? "CONTAIN" : "DELIVER",
       color: BLUE,
       ip,
       ...(positions[2] as { x: number; y: number }),
@@ -182,13 +164,11 @@ export function analyze(raw: string): Analysis {
 
   const narrative = !text
     ? "Paste raw headers or MIME above, or load a demo sample, and the engine will render a cited narrative here."
-    : score >= 75
+    : score > 70
       ? `Likely BEC → payload hybrid. Envelope spoofs "${domain}"; subject "${subject}" applies deadline pressure${dangerous.length ? ` and the ${dangerous[0]} attachment carries executable content` : ""}. Recommend quarantine and blocking ${chain[0]} at the edge.`
-      : score >= 45
+      : score >= 30
         ? `Mixed signals on "${subject}". Authentication is partially broken for ${domain} and the body uses persuasion patterns. Hold for analyst review before release.`
-        : score >= 20
-          ? `Low-risk mail from ${domain}. Minor heuristics fired (tone or link shape) but authentication aligns. Safe to deliver with monitoring.`
-          : `Benign. ${domain} passes SPF, DKIM and DMARC, no executable attachments, and no urgency or payment-redirection language in "${subject}".`;
+        : `Benign. ${domain} passes SPF, DKIM and DMARC, no executable attachments, and no urgency or payment-redirection language in "${subject}".`;
 
   return {
     score,
@@ -197,9 +177,9 @@ export function analyze(raw: string): Analysis {
     sender: from,
     badges,
     metrics: [
-      { label: "Spoof", value: spoof.toFixed(2) },
-      { label: "Payload", value: payload.toFixed(2) },
-      { label: "Social", value: social.toFixed(2) },
+      { label: "Spoof", value: spoofMetric.toFixed(2) },
+      { label: "Payload", value: payloadMetric.toFixed(2) },
+      { label: "Social", value: socialMetric.toFixed(2) },
     ],
     attachments: attachments.length ? attachments : [],
     narrative,
@@ -214,12 +194,12 @@ export function analyze(raw: string): Analysis {
       },
       {
         label: "Infrastructure reputation · WHOIS / VT",
-        value: score >= 45 ? "TOR · 14d" : "AGED · 7y",
+        value: score > 70 ? "TOR · 14d" : "AGED · 7y",
       },
     ],
     hops,
     relayLabel: `${chain.length} relays · ${40 + (score % 60)} ms RTT`,
-    mapStatus: score >= 45 ? "THREATFEED · LIVE" : "THREATFEED · NOMINAL",
+    mapStatus: score > 70 ? "THREATFEED · LIVE" : "THREATFEED · NOMINAL",
   };
 }
 
