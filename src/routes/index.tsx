@@ -659,6 +659,43 @@ function Index() {
           </div>
         </div>
 
+        {dispatchOpen && (
+          <div className="dispatch-overlay" onClick={() => setDispatchOpen(false)}>
+            <div className="dispatch-modal" onClick={(e) => e.stopPropagation()}>
+              <div className="dispatch-head">
+                <h3>Dispatch Evidence to CyberCell</h3>
+                <button
+                  className="dispatch-close"
+                  onClick={() => setDispatchOpen(false)}
+                  aria-label="Close"
+                >
+                  ×
+                </button>
+              </div>
+              <div className="dispatch-field">
+                <span>To</span>
+                <b>cybercell@police.gov.in</b>
+              </div>
+              <div className="dispatch-field">
+                <span>Subject</span>
+                <b>{dispatchSubject}</b>
+              </div>
+              <div className="dispatch-field dispatch-body">
+                <span>Body</span>
+                <pre>{dispatchBody}</pre>
+              </div>
+              <div className="dispatch-actions">
+                <button className="dispatch-cancel" onClick={() => setDispatchOpen(false)}>
+                  Cancel
+                </button>
+                <button className="dispatch-send" onClick={dispatch}>
+                  Open mail client &amp; send
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
         <footer>
           <span>Mail AI Security Lab · SOC-2 Type II · Data residency EU-Central</span>
           <span>Heuristic ensemble: RF · GNN · LLM-cite · 11/11 nominal</span>
