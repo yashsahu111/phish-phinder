@@ -220,7 +220,7 @@ function Index() {
             "Coordinates",
             geo ? `${geo.lat.toFixed(4)}, ${geo.lon.toFixed(4)}` : "Unresolved",
           ],
-          ["Relay Hops", a.hops.map((h) => h.name).join(" → ")],
+          ["Relay Hops", a.hops.map((h) => `${h.title} (${h.ip})`).join(" → ")],
         ],
         theme: "striped",
         headStyles: { fillColor: [15, 23, 42], fontSize: 9 },
