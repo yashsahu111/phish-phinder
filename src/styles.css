@@ -297,7 +297,10 @@
 .mailai .metric:hover { border-color: var(--line-bright); transform: translateY(-2px); }
 .mailai .metric span { display: block; color: var(--muted); font: 9px "JetBrains Mono", monospace; letter-spacing: .13em; text-transform: uppercase; }
 .mailai .metric strong { display: block; margin-top: 7px; font: 22px "Space Grotesk", sans-serif; }
-.mailai .map-card { grid-column: span 7; padding-bottom: 20px; }
+.mailai .bottom-grid { grid-column: span 12; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 18px; align-items: stretch; }
+.mailai .bottom-grid .map-card { grid-column: span 2; width: 100%; }
+.mailai .bottom-grid .forensics-card { grid-column: span 1; width: 100%; padding: 16px; display: flex; flex-direction: column; }
+.mailai .map-card { padding-bottom: 20px; }
 .mailai .map-head { padding: 23px 25px 17px; }
 .mailai .map-status { color: var(--blue); font: 10px "JetBrains Mono", monospace; }
 .mailai .map-box { position: relative; margin: 0 20px; overflow: hidden; border: 1px solid var(--line); border-radius: 18px; background: radial-gradient(circle at 50% 10%, #152033, #080b11 70%); }
@@ -311,7 +314,7 @@
 .mailai .readout-title { margin: 5px 0 4px; font: 15px "Space Grotesk", sans-serif; }
 .mailai .readout-copy { margin: 0; color: var(--muted); font-size: 11px; line-height: 1.55; }
 .mailai .risk { padding: 6px 8px; border: 1px solid rgba(255,82,101,.4); border-radius: 8px; color: var(--red); font: 9px "JetBrains Mono", monospace; white-space: nowrap; }
-.mailai .ai-column { grid-column: span 5; display: grid; gap: 18px; align-content: start; }
+.mailai .ai-column { grid-column: span 12; display: grid; gap: 18px; align-content: start; }
 .mailai .ai-card, .mailai .export-card { padding: 25px; }
 .mailai .ai-card::after { content: ""; position: absolute; top: -100px; right: -80px; width: 260px; height: 260px; border-radius: 50%; background: radial-gradient(circle, rgba(148,132,255,.2), transparent 68%); pointer-events: none; }
 .mailai .ai-title { display: flex; align-items: center; gap: 12px; padding-bottom: 17px; border-bottom: 1px solid var(--line); }
