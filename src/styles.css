@@ -372,15 +372,17 @@
 }
 .mailai .forensics-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  grid-template-columns: 1fr;
   gap: 10px;
   margin-top: 14px;
+  flex: 1;
 }
 .mailai .forensics-item {
   border: 1px solid rgba(148, 163, 184, 0.14);
   border-radius: 10px;
   padding: 12px 14px;
   background: rgba(148, 163, 184, 0.05);
+  min-width: 0;
 }
 .mailai .forensics-item span {
   display: block;
@@ -393,8 +395,10 @@
 .mailai .forensics-item b {
   display: block;
   margin-top: 6px;
-  font-size: 14px;
+  font-size: 13px;
+  line-height: 1.5;
   color: #e6ecf5;
   font-weight: 600;
-  word-break: break-word;
+  word-break: break-all;
+  overflow-wrap: anywhere;
 }
