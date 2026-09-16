@@ -341,7 +341,9 @@
 .mailai .node .core { transform-box: fill-box; transform-origin: center; transition: transform .25s; }
 .mailai .node:hover .core, .mailai .node.active .core { transform: scale(1.3); }
 @media (max-width: 900px) {
-  .mailai .input-card, .mailai .score-card, .mailai .map-card, .mailai .ai-column { grid-column: span 12; }
+  .mailai .input-card, .mailai .score-card { grid-column: span 12; }
+  .mailai .bottom-grid { grid-template-columns: 1fr; }
+  .mailai .bottom-grid .map-card, .mailai .bottom-grid .forensics-card { grid-column: 1 / -1; }
   .mailai .hero { align-items: flex-start; flex-direction: column; }
 }
 @media (max-width: 620px) {
