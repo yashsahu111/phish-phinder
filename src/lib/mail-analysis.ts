@@ -89,20 +89,33 @@ export function analyze(raw: string): Analysis {
   payload = clamp(payload);
   social = clamp(social);
 
-  // Hard-fail override: any authentication failure or suspicious TLD
-  // (e.g. .ru) forces the score to 94% (Critical) and a bright-red dial.
-  const authHardFail = spfFail || dkimFail || dmarcReject || SUSPECT_TLD.test(domain);
+  // Hard-fail override: explicit phishing flags in the text (spf=fail,
+  // dkim=fail, Received-SPF: fail) or a suspicious TLD/domain (e.g. .ru)
+  // force the score straight to 94% (Critical) with a bright-red dial.
+  const PHISH_FLAGS = /\b(spf\s*=\s*fail|dkim\s*=\s*fail|received-spf:\s*fail)\b/i;
+  const phishingFlags =
+    PHISH_FLAGS.test(text) ||
+    /\.ru\b/i.test(text) ||
+    spfFail ||
+    dkimFail ||
+    dmarcReject ||
+    SUSPECT_TLD.test(domain);
 
-  const score = authHardFail
+  if (phishingFlags) {
+    payload = 0.91;
+    social = 0.95;
+  }
+
+  const score = phishingFlags
     ? 94
     : text
       ? Math.round(Math.min(99, (spoof * 0.4 + payload * 0.35 + social * 0.25) * 100))
       : 0;
 
   const severity =
-    score >= 75 ? "Critical" : score >= 45 ? "Elevated" : score >= 20 ? "Guarded" : "Clean";
+    score > 80 ? "Critical" : score >= 45 ? "Elevated" : score >= 20 ? "Guarded" : "Clean";
   const severityColor =
-    score >= 75 ? RED : score >= 45 ? ORANGE : score >= 20 ? BLUE : GREEN;
+    score > 80 ? RED : score >= 45 ? ORANGE : score >= 20 ? BLUE : GREEN;
 
   const badges: Badge[] = [
     { label: `SPF · ${spfFail ? "fail" : "pass"}`, state: spfFail ? "fail" : "pass" },
