@@ -1,6 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { jsPDF } from "jspdf";
+import autoTable from "jspdf-autotable";
 import {
   analyze,
   extractOriginIp,
@@ -48,6 +49,7 @@ function Index() {
   const [downloadLabel, setDownloadLabel] = useState("Download Forensic PDF");
   const [busy, setBusy] = useState(false);
   const [geo, setGeo] = useState<IpGeo | null>(null);
+  const [dispatchOpen, setDispatchOpen] = useState(false);
 
   const a = useMemo(() => analyze(submitted), [submitted]);
   const originIp = useMemo(() => extractOriginIp(submitted), [submitted]);
