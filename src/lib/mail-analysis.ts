@@ -111,16 +111,20 @@ export function analyze(raw: string): Analysis {
   let score = 5;
   if (spfFail) score += 25;
   if (dkimFail) score += 20;
-  if (dmarcReject) score += 15;
+  if (dmarcExplicitFail) score += 15;
+  // DMARC failure driven by domain mismatch carries a heavier penalty.
+  if (dkimMisaligned) score += 25;
   if (domainFlag) score += 20;
   if (socialTrigger) score += 15;
   if (payloadHit) score += 20;
   score = text ? Math.max(5, Math.min(99, score)) : 0;
 
   // Spoof metric scales with authentication failures: 0.05 all pass → 0.99 all fail.
-  const authFails = [spfFail, dkimFail, dmarcReject].filter(Boolean).length;
-  const spoofMetric =
-    authFails === 0
+  // A DKIM/From domain mismatch (forced DMARC failure) pins spoof risk at 0.75.
+  const authFails = [spfFail, dkimFail, dmarcFail].filter(Boolean).length;
+  const spoofMetric = dkimMisaligned
+    ? 0.75
+    : authFails === 0
       ? 0.05
       : authFails === 3
         ? 0.99
