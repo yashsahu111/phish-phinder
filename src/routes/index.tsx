@@ -628,12 +628,21 @@ function Index() {
                 <span className="tag">Live</span>
               </div>
 
+              <div className="file-list" style={{ marginBottom: 12 }}>
+                <span className="file-chip">Sender Identity: {a.senderDomain}</span>
+                <span className="file-chip">
+                  {a.payloadCount > 0
+                    ? `Payload: ${a.attachments[0]}`
+                    : "No Executable Attachments Detected"}
+                </span>
+              </div>
+
               <p className="ai-copy">{a.narrative}</p>
 
               {a.signals.map((s) => (
                 <div className="signal" key={s.label}>
                   {s.label}
-                  <b style={{ color: a.severityColor, background: a.severityColor + "1a" }}>{s.value}</b>
+                  <b style={{ color: s.color, background: s.color + "1a" }}>{s.value}</b>
                 </div>
               ))}
             </section>

@@ -25,7 +25,13 @@ export interface Analysis {
   metrics: { label: string; value: string }[];
   attachments: string[];
   narrative: string;
-  signals: { label: string; value: string }[];
+  signals: { label: string; value: string; color: string }[];
+  senderDomain: string;
+  subject: string;
+  linkCount: number;
+  payloadCount: number;
+  originIp: string;
+  authOk: boolean;
   hops: Hop[];
   relayLabel: string;
   mapStatus: string;
@@ -178,13 +184,16 @@ export function analyze(raw: string): Analysis {
     };
   });
 
+  const linkCount = (text.match(/https?:\/\/[^\s"'<>]+/gi) ?? []).length;
+  const payloadCount = attachments.length;
+  const originIp = extractOriginIp(text);
+  const authOk = !spfFail && !dkimFail && !dmarcReject;
+
   const narrative = !text
     ? "Paste raw headers or MIME above, or load a demo sample, and the engine will render a cited narrative here."
-    : score > 70
-      ? `Likely BEC → payload hybrid. Envelope spoofs "${domain}"; subject "${subject}" applies deadline pressure${dangerous.length ? ` and the ${dangerous[0]} attachment carries executable content` : ""}. Recommend quarantine and blocking ${chain[0]} at the edge.`
-      : score >= 30
-        ? `Mixed signals on "${subject}". Authentication is partially broken for ${domain} and the body uses persuasion patterns. Hold for analyst review before release.`
-        : `Benign. ${domain} passes SPF, DKIM and DMARC, no executable attachments, and no urgency or payment-redirection language in "${subject}".`;
+    : authOk
+      ? `Message from ${domain} ("${subject}") passes SPF, DKIM and DMARC, so the sender identity is cryptographically verified. ${payloadCount || linkCount ? `${payloadCount + linkCount} link/payload artifact(s) were found but none are executable-grade;` : "No malicious links or payloads were detected;"} origin ${originIp} shows no authentication anomalies.`
+      : `Message claiming to be from ${domain} ("${subject}") fails authentication — SPF ${spfFail ? "FAIL" : "pass"}, DKIM ${dkimFail ? "FAIL" : "pass"}, DMARC ${dmarcReject ? "REJECT" : "pass"} — so the sender identity cannot be verified. ${payloadCount || linkCount ? `${payloadCount + linkCount} link/payload artifact(s) detected and` : "No payloads detected, but"} origin ${originIp} is untrusted; recommend quarantine and edge block.`;
 
   return {
     score,
@@ -201,18 +210,33 @@ export function analyze(raw: string): Analysis {
     narrative,
     signals: [
       {
-        label: "SPF / DKIM / DMARC alignment",
-        value: `${spfFail ? "FAIL" : "PASS"} · ${dkimFail ? "FAIL" : "PASS"} · ${dmarcReject ? "REJECT" : "PASS"}`,
+        label: "Domain & Sender Verification",
+        value: authOk ? "PASS (Authenticated)" : "FAIL (Unverified Sender)",
+        color: authOk ? GREEN : RED,
       },
       {
-        label: "Attachment detonation · sandbox",
-        value: dangerous.length ? "EMU · RANSOM-NOTE" : attachments.length ? "INERT · DOC" : "NONE",
+        label: "File & Link Security Scan",
+        value:
+          linkCount + payloadCount > 0
+            ? `HIGH RISK (${linkCount + payloadCount} Links / Payloads Found)`
+            : "CLEAN (No Malicious Payloads)",
+        color: linkCount + payloadCount > 0 ? RED : GREEN,
       },
       {
-        label: "Infrastructure reputation · WHOIS / VT",
-        value: score > 70 ? "TOR · 14d" : "AGED · 7y",
+        label: "Server Origin & Reputation",
+        value:
+          !authOk || score > 70
+            ? `SUSPICIOUS (${originIp})`
+            : `VERIFIED (${originIp})`,
+        color: !authOk || score > 70 ? (score > 70 ? RED : ORANGE) : GREEN,
       },
     ],
+    senderDomain: domain,
+    subject,
+    linkCount,
+    payloadCount,
+    originIp,
+    authOk,
     hops,
     relayLabel: `${chain.length} relays · ${40 + (score % 60)} ms RTT`,
     mapStatus: score > 70 ? "THREATFEED · LIVE" : "THREATFEED · NOMINAL",
