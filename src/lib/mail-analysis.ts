@@ -184,13 +184,16 @@ export function analyze(raw: string): Analysis {
     };
   });
 
+  const linkCount = (text.match(/https?:\/\/[^\s"'<>]+/gi) ?? []).length;
+  const payloadCount = attachments.length;
+  const originIp = extractOriginIp(text);
+  const authOk = !spfFail && !dkimFail && !dmarcReject;
+
   const narrative = !text
     ? "Paste raw headers or MIME above, or load a demo sample, and the engine will render a cited narrative here."
-    : score > 70
-      ? `Likely BEC → payload hybrid. Envelope spoofs "${domain}"; subject "${subject}" applies deadline pressure${dangerous.length ? ` and the ${dangerous[0]} attachment carries executable content` : ""}. Recommend quarantine and blocking ${chain[0]} at the edge.`
-      : score >= 30
-        ? `Mixed signals on "${subject}". Authentication is partially broken for ${domain} and the body uses persuasion patterns. Hold for analyst review before release.`
-        : `Benign. ${domain} passes SPF, DKIM and DMARC, no executable attachments, and no urgency or payment-redirection language in "${subject}".`;
+    : authOk
+      ? `Message from ${domain} ("${subject}") passes SPF, DKIM and DMARC, so the sender identity is cryptographically verified. ${payloadCount || linkCount ? `${payloadCount + linkCount} link/payload artifact(s) were found but none are executable-grade;` : "No malicious links or payloads were detected;"} origin ${originIp} shows no authentication anomalies.`
+      : `Message claiming to be from ${domain} ("${subject}") fails authentication — SPF ${spfFail ? "FAIL" : "pass"}, DKIM ${dkimFail ? "FAIL" : "pass"}, DMARC ${dmarcReject ? "REJECT" : "pass"} — so the sender identity cannot be verified. ${payloadCount || linkCount ? `${payloadCount + linkCount} link/payload artifact(s) detected and` : "No payloads detected, but"} origin ${originIp} is untrusted; recommend quarantine and edge block.`;
 
   return {
     score,
