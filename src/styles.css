@@ -331,6 +331,16 @@
 .mailai .ai-title { display: flex; align-items: center; gap: 12px; padding-bottom: 17px; border-bottom: 1px solid var(--line); }
 .mailai .ai-badge { display: grid; place-items: center; width: 38px; height: 38px; border-radius: 12px; color: var(--bg); background: linear-gradient(135deg, var(--purple), var(--blue)); }
 .mailai .ai-copy { margin: 19px 0; color: #cbd5e1; font-size: 14px; line-height: 1.8; }
+.mailai .ai-insight {
+  margin: 14px 0; padding: 14px 16px; border: 1px solid rgba(148,132,255,.45); border-radius: 15px;
+  background: linear-gradient(140deg, rgba(148,132,255,.12), rgba(72,200,240,.05));
+}
+.mailai .ai-insight span { color: var(--purple); font: 9px "JetBrains Mono", monospace; letter-spacing: .13em; text-transform: uppercase; }
+.mailai .ai-insight p { margin: 7px 0 0; color: #dbe3f2; font-size: 12px; line-height: 1.7; }
+.mailai .judge-grid { display: grid; grid-template-columns: repeat(3, minmax(0,1fr)); gap: 10px; margin: 14px 0; }
+.mailai .judge-card { min-width: 0; padding: 13px; border: 1px solid var(--line); border-radius: 15px; background: rgba(255,255,255,.025); }
+.mailai .judge-card span { display: block; color: var(--muted); font: 9px "JetBrains Mono", monospace; letter-spacing: .13em; text-transform: uppercase; }
+.mailai .judge-card strong { display: block; margin-top: 7px; font: 600 12px/1.55 "Space Grotesk", sans-serif; }
 .mailai .signal {
   display: flex; align-items: center; justify-content: space-between; gap: 10px; width: 100%; margin-top: 9px;
   padding: 12px; border: 1px solid var(--line); border-radius: 13px; color: #b9c3d1;
