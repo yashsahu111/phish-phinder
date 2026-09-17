@@ -87,8 +87,18 @@ export function analyze(raw: string): Analysis {
   // --- Dynamic math-based scoring engine ---
   // Additive penalties from a 5-point baseline; no hardcoded sample overrides.
   const spfFail = /\bspf\s*=\s*fail\b|received-spf:\s*fail/i.test(text);
-  const dkimFail = /\bdkim\s*=\s*(fail|mismatch)\b/i.test(text);
-  const dmarcReject = /\bdmarc\s*=\s*(fail|reject)\b/i.test(text);
+  const dkimRawFail = /\bdkim\s*=\s*(fail|mismatch)\b/i.test(text);
+  const dmarcExplicitFail = /\bdmarc\s*=\s*(fail|reject)\b/i.test(text) || /\bDMARC:\s*['"]?FAIL\b/i.test(text);
+
+  // --- DMARC alignment check ---
+  // Compare the From: domain against the DKIM signing domain (d= / header.i=).
+  // A mismatch forces DKIM "mismatch" and DMARC "fail" even if raw dkim=pass exists.
+  const dkimDomain =
+    text.match(/\bd\s*=\s*([\w.-]+)/i)?.[1] ?? text.match(/header\.i\s*=\s*@?([\w.-]+)/i)?.[1] ?? "";
+  const dkimMisaligned =
+    dkimDomain !== "" && domain !== "unknown" && dkimDomain.toLowerCase() !== domain.toLowerCase();
+  const dkimFail = dkimRawFail || dkimMisaligned;
+  const dmarcFail = dmarcExplicitFail || dkimMisaligned;
 
   const domainFlag =
     SUSPECT_TLD.test(domain) || SUSPECT_TLD.test(text) || FAKE_DOMAIN.test(domain) || FAKE_DOMAIN.test(text);
@@ -101,16 +111,20 @@ export function analyze(raw: string): Analysis {
   let score = 5;
   if (spfFail) score += 25;
   if (dkimFail) score += 20;
-  if (dmarcReject) score += 15;
+  if (dmarcExplicitFail) score += 15;
+  // DMARC failure driven by domain mismatch carries a heavier penalty.
+  if (dkimMisaligned) score += 25;
   if (domainFlag) score += 20;
   if (socialTrigger) score += 15;
   if (payloadHit) score += 20;
   score = text ? Math.max(5, Math.min(99, score)) : 0;
 
   // Spoof metric scales with authentication failures: 0.05 all pass → 0.99 all fail.
-  const authFails = [spfFail, dkimFail, dmarcReject].filter(Boolean).length;
-  const spoofMetric =
-    authFails === 0
+  // A DKIM/From domain mismatch (forced DMARC failure) pins spoof risk at 0.75.
+  const authFails = [spfFail, dkimFail, dmarcFail].filter(Boolean).length;
+  const spoofMetric = dkimMisaligned
+    ? 0.75
+    : authFails === 0
       ? 0.05
       : authFails === 3
         ? 0.99
@@ -128,8 +142,8 @@ export function analyze(raw: string): Analysis {
       state: dkimFail ? "warn" : "pass",
     },
     {
-      label: `DMARC · ${dmarcReject ? "reject" : "pass"}`,
-      state: dmarcReject ? "fail" : "pass",
+      label: `DMARC · ${dmarcFail ? "fail" : "pass"}`,
+      state: dmarcFail ? "fail" : "pass",
     },
   ];
 
@@ -187,13 +201,13 @@ export function analyze(raw: string): Analysis {
   const linkCount = (text.match(/https?:\/\/[^\s"'<>]+/gi) ?? []).length;
   const payloadCount = attachments.length;
   const originIp = extractOriginIp(text);
-  const authOk = !spfFail && !dkimFail && !dmarcReject;
+  const authOk = !spfFail && !dkimFail && !dmarcFail;
 
   const narrative = !text
     ? "Paste raw headers or MIME above, or load a demo sample, and the engine will render a cited narrative here."
     : authOk
       ? `Message from ${domain} ("${subject}") passes SPF, DKIM and DMARC, so the sender identity is cryptographically verified. ${payloadCount || linkCount ? `${payloadCount + linkCount} link/payload artifact(s) were found but none are executable-grade;` : "No malicious links or payloads were detected;"} origin ${originIp} shows no authentication anomalies.`
-      : `Message claiming to be from ${domain} ("${subject}") fails authentication — SPF ${spfFail ? "FAIL" : "pass"}, DKIM ${dkimFail ? "FAIL" : "pass"}, DMARC ${dmarcReject ? "REJECT" : "pass"} — so the sender identity cannot be verified. ${payloadCount || linkCount ? `${payloadCount + linkCount} link/payload artifact(s) detected and` : "No payloads detected, but"} origin ${originIp} is untrusted; recommend quarantine and edge block.`;
+      : `Message claiming to be from ${domain} ("${subject}") fails authentication — SPF ${spfFail ? "FAIL" : "pass"}, DKIM ${dkimFail ? (dkimMisaligned && !dkimRawFail ? "domain mismatch" : "FAIL") : "pass"}, DMARC ${dmarcFail ? (dkimMisaligned && !dmarcExplicitFail ? "FAIL (domain misalignment)" : "REJECT") : "pass"} — so the sender identity cannot be verified. ${payloadCount || linkCount ? `${payloadCount + linkCount} link/payload artifact(s) detected and` : "No payloads detected, but"} origin ${originIp} is untrusted; recommend quarantine and edge block.`;
 
   return {
     score,
