@@ -74,6 +74,11 @@ const BAD_EXT = /\b[\w.-]+\.(exe|scr|iso|js|vbs|jar|bat|cmd|zip|html?)\b/gi;
 const PAYLOAD_REF = /\.(exe|iso|scr)\b|\bpayload\b/i;
 const SOCIAL_KEYWORDS = /\b(urgent|suspended|blocked|verify|account|bank)\b/gi;
 
+function linkHeavy(text: string) {
+  return (text.match(/https?:\/\//gi) ?? []).length > 3;
+}
+
+
 export function analyze(raw: string): Analysis {
   const text = raw.trim();
   const from = header(text, "From") || "unknown@unknown";
