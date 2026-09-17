@@ -207,7 +207,7 @@ export function analyze(raw: string): Analysis {
     ? "Paste raw headers or MIME above, or load a demo sample, and the engine will render a cited narrative here."
     : authOk
       ? `Message from ${domain} ("${subject}") passes SPF, DKIM and DMARC, so the sender identity is cryptographically verified. ${payloadCount || linkCount ? `${payloadCount + linkCount} link/payload artifact(s) were found but none are executable-grade;` : "No malicious links or payloads were detected;"} origin ${originIp} shows no authentication anomalies.`
-      : `Message claiming to be from ${domain} ("${subject}") fails authentication — SPF ${spfFail ? "FAIL" : "pass"}, DKIM ${dkimFail ? "FAIL" : "pass"}, DMARC ${dmarcReject ? "REJECT" : "pass"} — so the sender identity cannot be verified. ${payloadCount || linkCount ? `${payloadCount + linkCount} link/payload artifact(s) detected and` : "No payloads detected, but"} origin ${originIp} is untrusted; recommend quarantine and edge block.`;
+      : `Message claiming to be from ${domain} ("${subject}") fails authentication — SPF ${spfFail ? "FAIL" : "pass"}, DKIM ${dkimFail ? (dkimMisaligned && !dkimRawFail ? "domain mismatch" : "FAIL") : "pass"}, DMARC ${dmarcFail ? (dkimMisaligned && !dmarcExplicitFail ? "FAIL (domain misalignment)" : "REJECT") : "pass"} — so the sender identity cannot be verified. ${payloadCount || linkCount ? `${payloadCount + linkCount} link/payload artifact(s) detected and` : "No payloads detected, but"} origin ${originIp} is untrusted; recommend quarantine and edge block.`;
 
   return {
     score,
