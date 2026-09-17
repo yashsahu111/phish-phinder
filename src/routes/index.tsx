@@ -187,17 +187,48 @@ function Index() {
         body: [
           ["Threat Score", `${a.score}%`],
           ["Severity Level", a.severity.toUpperCase()],
-           ["Primary Threat Type", a.threatType],
+          ["Primary Threat Type", a.threatType],
+          ["Threat Context", a.threatContext],
+          ["Sender Identity", `${a.sender} (${a.senderDomain})`],
+          ["Subject", a.subject || "Not present"],
+          [
+            "Attachments",
+            a.attachments.length
+              ? a.attachments.join(", ")
+              : "No executable attachments detected",
+          ],
+          ["Links / Payload References", `${a.linkCount} link(s) · ${a.payloadCount} payload reference(s)`],
           ...a.badges.map((b): [string, string] => {
             const [name, status] = b.label.split(/[:·]/).map((s) => s.trim());
             return [name ?? b.label, status ?? b.label];
           }),
+          ...a.signals.map((s): [string, string] => [s.label, s.value]),
+          ...a.metrics.map((m): [string, string] => [`Metric · ${m.label}`, m.value]),
           ["AI Narrative Analysis", a.narrative],
+          ...(a.identityInsight
+            ? ([["AI Identity Insight", a.identityInsight]] as [string, string][])
+            : []),
         ],
         theme: "striped",
         headStyles: { fillColor: [15, 23, 42], fontSize: 9 },
         styles: { fontSize: 8.5, cellPadding: 2.5 },
         columnStyles: { 0: { fontStyle: "bold", cellWidth: 45 } },
+      });
+      y = (doc as unknown as { lastAutoTable: { finalY: number } }).lastAutoTable.finalY + 10;
+
+      // ---- Risk classification (judge summary) ----
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(12);
+      doc.text("Risk Classification", margin, y);
+      y += 3;
+      autoTable(doc, {
+        startY: y,
+        margin: { left: margin, right: margin },
+        head: [["Threat Category", "System Risk Level", "User Risk Level"]],
+        body: [[a.judge.category, a.judge.systemRisk, a.judge.userRisk]],
+        theme: "grid",
+        headStyles: { fillColor: [15, 23, 42], fontSize: 9 },
+        styles: { fontSize: 8.5, cellPadding: 2.5 },
       });
       y = (doc as unknown as { lastAutoTable: { finalY: number } }).lastAutoTable.finalY + 10;
 
