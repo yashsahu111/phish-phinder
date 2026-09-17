@@ -216,6 +216,22 @@ function Index() {
       });
       y = (doc as unknown as { lastAutoTable: { finalY: number } }).lastAutoTable.finalY + 10;
 
+      // ---- Risk classification (judge summary) ----
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(12);
+      doc.text("Risk Classification", margin, y);
+      y += 3;
+      autoTable(doc, {
+        startY: y,
+        margin: { left: margin, right: margin },
+        head: [["Threat Category", "System Risk Level", "User Risk Level"]],
+        body: [[a.judge.category, a.judge.systemRisk, a.judge.userRisk]],
+        theme: "grid",
+        headStyles: { fillColor: [15, 23, 42], fontSize: 9 },
+        styles: { fontSize: 8.5, cellPadding: 2.5 },
+      });
+      y = (doc as unknown as { lastAutoTable: { finalY: number } }).lastAutoTable.finalY + 10;
+
       // ---- Origin telemetry table ----
       doc.setFont("helvetica", "bold");
       doc.setFontSize(12);
