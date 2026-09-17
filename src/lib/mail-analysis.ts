@@ -231,7 +231,7 @@ export function analyze(raw: string): Analysis {
   const linkCount = (text.match(/https?:\/\/[^\s"'<>]+/gi) ?? []).length;
   const payloadCount = attachments.length;
   const originIp = extractOriginIp(text);
-  const authOk = !spfFail && !dkimFail && !dmarcFail;
+  const authOk = allPass && !dkimFail;
 
   const narrative = !text
     ? "Paste raw headers or MIME above, or load a demo sample, and the engine will render a cited narrative here."
