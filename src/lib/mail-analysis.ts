@@ -25,7 +25,13 @@ export interface Analysis {
   metrics: { label: string; value: string }[];
   attachments: string[];
   narrative: string;
-  signals: { label: string; value: string }[];
+  signals: { label: string; value: string; color: string }[];
+  senderDomain: string;
+  subject: string;
+  linkCount: number;
+  payloadCount: number;
+  originIp: string;
+  authOk: boolean;
   hops: Hop[];
   relayLabel: string;
   mapStatus: string;
