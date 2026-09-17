@@ -20,6 +20,12 @@ export interface Analysis {
   score: number;
   severity: string;
   severityColor: string;
+  threatType:
+    | "Identity Spoofing & Domain Impersonation"
+    | "Social Engineering & Phishing"
+    | "Malicious Payload / Link Hazard"
+    | "Clean / Low Risk";
+  threatContext: string;
   sender: string;
   badges: Badge[];
   metrics: { label: string; value: string }[];
@@ -73,9 +79,17 @@ const FAKE_DOMAIN = /\b(sbi-login|secure-?login|account-?verify|paypa1|banking-s
 const BAD_EXT = /\b[\w.-]+\.(exe|scr|iso|js|vbs|jar|bat|cmd|zip|html?)\b/gi;
 const PAYLOAD_REF = /\.(exe|iso|scr)\b|\bpayload\b/i;
 const SOCIAL_KEYWORDS = /\b(urgent|suspended|blocked|verify|account|bank)\b/gi;
+const FINANCIAL_SOLICITATION = /\b(wire transfer|payment|invoice|bank transfer|billing|remittance|funds?|crypto(?:currency)?|gift cards?)\b/i;
 
 function linkHeavy(text: string) {
   return (text.match(/https?:\/\//gi) ?? []).length > 3;
+}
+
+function payloadCountLabel(attachmentCount: number, linkCount: number) {
+  const parts: string[] = [];
+  if (attachmentCount > 0) parts.push(`${attachmentCount} dangerous attachment${attachmentCount === 1 ? "" : "s"}`);
+  if (linkCount > 0) parts.push(`${linkCount} suspicious link${linkCount === 1 ? "" : "s"}`);
+  return parts.join(" and ") || "a suspicious payload indicator";
 }
 
 
@@ -163,8 +177,9 @@ export function analyze(raw: string): Analysis {
   const domainFlag =
     SUSPECT_TLD.test(domain) || SUSPECT_TLD.test(text) || FAKE_DOMAIN.test(domain) || FAKE_DOMAIN.test(text);
   const socialHits = new Set((text.match(SOCIAL_KEYWORDS) ?? []).map((k) => k.toLowerCase())).size;
-  const socialTrigger = socialHits >= 2;
+  const socialTrigger = socialHits >= 2 || FINANCIAL_SOLICITATION.test(text);
   const payloadHit = PAYLOAD_REF.test(text);
+  const linkCount = (text.match(/https?:\/\/[^\s"'<>]+/gi) ?? []).length;
 
   // --- TIER 3: universal threat scoring bands ---
   const verdicts = [spfVerdict, dkimVerdict, dmarcVerdict];
@@ -198,6 +213,26 @@ export function analyze(raw: string): Analysis {
 
   const severity = score > 70 ? "Critical" : score >= 30 ? "Elevated" : "Clean";
   const severityColor = score > 70 ? RED : score >= 30 ? ORANGE : GREEN;
+
+  const identityThreat = dmarcFail || dkimUnaligned || spfUnaligned;
+  const linkHazard = payloadHit || dangerous.length > 0 || (linkCount > 0 && domainFlag);
+  const threatType: Analysis["threatType"] =
+    score < 20
+      ? "Clean / Low Risk"
+      : identityThreat
+        ? "Identity Spoofing & Domain Impersonation"
+        : linkHazard
+          ? "Malicious Payload / Link Hazard"
+          : "Social Engineering & Phishing";
+
+  const threatContext =
+    threatType === "Identity Spoofing & Domain Impersonation"
+      ? `Warning: High threat score reflects identity fraud and email spoofing risks${dkimUnaligned || spfUnaligned ? " caused by an unaligned sender domain" : " caused by failed sender authentication"}. This indicates a high risk of social engineering or credential theft rather than direct system malware execution.`
+      : threatType === "Malicious Payload / Link Hazard"
+        ? `Warning: The message contains ${payloadCountLabel(attachments.length, linkCount)} with characteristics commonly used for malware delivery or credential capture. Avoid opening attachments or following links until the artifact is contained.`
+        : threatType === "Social Engineering & Phishing"
+          ? `Warning: The language in “${subject}” uses urgency or financial pressure associated with phishing attempts. Verify the request through a trusted channel before taking action.`
+          : `No material authentication, payload, link, or social-engineering risks were identified for ${domain}. The message currently presents a low-risk profile.`;
 
   const stateOf = (v: AuthVerdict): AuthState => (v === "pass" ? "pass" : v === "fail" ? "fail" : "warn");
   const badges: Badge[] = [
@@ -266,7 +301,6 @@ export function analyze(raw: string): Analysis {
     };
   });
 
-  const linkCount = (text.match(/https?:\/\/[^\s"'<>]+/gi) ?? []).length;
   const payloadCount = attachments.length;
   const originIp = extractOriginIp(text);
   const authOk = allPass && !dkimFail;
@@ -281,6 +315,8 @@ export function analyze(raw: string): Analysis {
     score,
     severity,
     severityColor,
+    threatType,
+    threatContext,
     sender: from,
     badges,
     metrics: [
