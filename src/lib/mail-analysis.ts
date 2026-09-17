@@ -142,8 +142,8 @@ export function analyze(raw: string): Analysis {
       state: dkimFail ? "warn" : "pass",
     },
     {
-      label: `DMARC · ${dmarcReject ? "reject" : "pass"}`,
-      state: dmarcReject ? "fail" : "pass",
+      label: `DMARC · ${dmarcFail ? "fail" : "pass"}`,
+      state: dmarcFail ? "fail" : "pass",
     },
   ];
 
@@ -201,7 +201,7 @@ export function analyze(raw: string): Analysis {
   const linkCount = (text.match(/https?:\/\/[^\s"'<>]+/gi) ?? []).length;
   const payloadCount = attachments.length;
   const originIp = extractOriginIp(text);
-  const authOk = !spfFail && !dkimFail && !dmarcReject;
+  const authOk = !spfFail && !dkimFail && !dmarcFail;
 
   const narrative = !text
     ? "Paste raw headers or MIME above, or load a demo sample, and the engine will render a cited narrative here."
