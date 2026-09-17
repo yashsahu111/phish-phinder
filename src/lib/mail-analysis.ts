@@ -74,6 +74,11 @@ const BAD_EXT = /\b[\w.-]+\.(exe|scr|iso|js|vbs|jar|bat|cmd|zip|html?)\b/gi;
 const PAYLOAD_REF = /\.(exe|iso|scr)\b|\bpayload\b/i;
 const SOCIAL_KEYWORDS = /\b(urgent|suspended|blocked|verify|account|bank)\b/gi;
 
+function linkHeavy(text: string) {
+  return (text.match(/https?:\/\//gi) ?? []).length > 3;
+}
+
+
 export function analyze(raw: string): Analysis {
   const text = raw.trim();
   const from = header(text, "From") || "unknown@unknown";
@@ -84,66 +89,96 @@ export function analyze(raw: string): Analysis {
   const attachments = Array.from(new Set((text.match(BAD_EXT) ?? []).map((a) => a)));
   const dangerous = attachments.filter((a) => /\.(exe|scr|iso|js|vbs|jar|bat|cmd)$/i.test(a));
 
-  // --- Dynamic math-based scoring engine ---
-  // Additive penalties from a 5-point baseline; no hardcoded sample overrides.
-  const spfFail = /\bspf\s*=\s*fail\b|received-spf:\s*fail/i.test(text);
-  const dkimRawFail = /\bdkim\s*=\s*(fail|mismatch)\b/i.test(text);
-  const dmarcExplicitFail = /\bdmarc\s*=\s*(fail|reject)\b/i.test(text) || /\bDMARC:\s*['"]?FAIL\b/i.test(text);
+  // ============================================================
+  // 3-TIER UNIVERSAL PARSING HIERARCHY
+  // ============================================================
+  const lower = text.toLowerCase();
+  type AuthVerdict = "pass" | "fail" | "unknown";
 
-  // --- DMARC alignment check ---
-  // Compare the From: domain against the DKIM signing domain (d= / header.i=).
-  // A mismatch forces DKIM "mismatch" and DMARC "fail" even if raw dkim=pass exists.
+  // --- TIER 1: explicit summary declarations (absolute priority) ---
+  const tier1 = (name: string): AuthVerdict => {
+    const m = lower.match(new RegExp(`\\b${name}\\s*:\\s*['"\`]?\\s*(pass|fail|reject)\\b`));
+    if (!m) return "unknown";
+    return m[1] === "pass" ? "pass" : "fail";
+  };
+
+  // --- TIER 2: raw header parsing (fallback) ---
+  const tier2 = (name: string): AuthVerdict => {
+    const m = lower.match(new RegExp(`\\b${name}\\s*=\\s*(pass|fail|reject|mismatch|softfail|none)\\b`));
+    if (!m) return "unknown";
+    return m[1] === "pass" ? "pass" : m[1] === "none" ? "unknown" : "fail";
+  };
+
+  const spfVerdict: AuthVerdict = tier1("spf") !== "unknown" ? tier1("spf") : tier2("spf");
+  const dkimVerdict: AuthVerdict = tier1("dkim") !== "unknown" ? tier1("dkim") : tier2("dkim");
+
+  // DKIM alignment: From: domain vs DKIM signing domain (d= / header.i=)
   const dkimDomain =
     text.match(/\bd\s*=\s*([\w.-]+)/i)?.[1] ?? text.match(/header\.i\s*=\s*@?([\w.-]+)/i)?.[1] ?? "";
   const dkimMisaligned =
     dkimDomain !== "" && domain !== "unknown" && dkimDomain.toLowerCase() !== domain.toLowerCase();
-  const dkimFail = dkimRawFail || dkimMisaligned;
-  const dmarcFail = dmarcExplicitFail || dkimMisaligned;
+
+  const dmarcExplicit: AuthVerdict = tier1("dmarc") !== "unknown" ? tier1("dmarc") : tier2("dmarc");
+  let dmarcVerdict: AuthVerdict = dmarcExplicit;
+  if (dmarcVerdict === "unknown") {
+    // Mismatch alone does not fail DMARC unless an explicit fail flag exists.
+    if (dkimVerdict === "pass" && spfVerdict !== "fail") dmarcVerdict = "pass";
+  } else if (dmarcVerdict === "fail" && dkimMisaligned) {
+    dmarcVerdict = "fail";
+  }
+
+  const spfFail = spfVerdict === "fail";
+  const dkimFail = dkimVerdict === "fail" || (dkimMisaligned && dmarcExplicit === "fail");
+  const dmarcFail = dmarcVerdict === "fail";
 
   const domainFlag =
     SUSPECT_TLD.test(domain) || SUSPECT_TLD.test(text) || FAKE_DOMAIN.test(domain) || FAKE_DOMAIN.test(text);
-
   const socialHits = new Set((text.match(SOCIAL_KEYWORDS) ?? []).map((k) => k.toLowerCase())).size;
   const socialTrigger = socialHits >= 2;
-
   const payloadHit = PAYLOAD_REF.test(text);
 
-  let score = 5;
-  if (spfFail) score += 25;
-  if (dkimFail) score += 20;
-  if (dmarcExplicitFail) score += 15;
-  // DMARC failure driven by domain mismatch carries a heavier penalty.
-  if (dkimMisaligned) score += 25;
-  if (domainFlag) score += 20;
-  if (socialTrigger) score += 15;
-  if (payloadHit) score += 20;
-  score = text ? Math.max(5, Math.min(99, score)) : 0;
+  // --- TIER 3: universal threat scoring bands ---
+  const verdicts = [spfVerdict, dkimVerdict, dmarcVerdict];
+  const failCount = verdicts.filter((v) => v === "fail").length;
+  const unknownCount = verdicts.filter((v) => v === "unknown").length;
+  const allPass = failCount === 0 && unknownCount === 0;
+  const critical = dmarcFail && (domainFlag || payloadHit || failCount >= 2);
 
-  // Spoof metric scales with authentication failures: 0.05 all pass → 0.99 all fail.
-  // A DKIM/From domain mismatch (forced DMARC failure) pins spoof risk at 0.75.
-  const authFails = [spfFail, dkimFail, dmarcFail].filter(Boolean).length;
-  const spoofMetric = dkimMisaligned
-    ? 0.75
-    : authFails === 0
-      ? 0.05
-      : authFails === 3
-        ? 0.99
-        : Number((0.05 + (0.94 * authFails) / 3).toFixed(2));
+  const clamp = (n: number, lo: number, hi: number) => Math.max(lo, Math.min(hi, n));
+  let score: number;
+  let spoofMetric: number;
+  if (critical) {
+    score = clamp(80 + failCount * 4 + (domainFlag ? 4 : 0) + (payloadHit ? 4 : 0) + (socialTrigger ? 3 : 0), 80, 99);
+    spoofMetric = clamp(Number((0.85 + failCount * 0.04 + (dkimMisaligned ? 0.03 : 0)).toFixed(2)), 0.85, 0.99);
+  } else if (allPass && !domainFlag && !payloadHit) {
+    score = clamp(5 + (socialTrigger ? 5 : 0) + (linkHeavy(text) ? 2 : 0), 5, 12);
+    spoofMetric = 0.05;
+  } else {
+    score = clamp(
+      40 + failCount * 6 + unknownCount * 4 + (domainFlag ? 6 : 0) + (payloadHit ? 6 : 0) + (socialTrigger ? 4 : 0),
+      40,
+      60,
+    );
+    spoofMetric = 0.45;
+  }
+  if (!text) score = 0;
+
   const socialMetric = socialTrigger ? 0.85 : 0.05;
   const payloadMetric = payloadHit ? 0.92 : 0.04;
 
   const severity = score > 70 ? "Critical" : score >= 30 ? "Elevated" : "Clean";
   const severityColor = score > 70 ? RED : score >= 30 ? ORANGE : GREEN;
 
+  const stateOf = (v: AuthVerdict): AuthState => (v === "pass" ? "pass" : v === "fail" ? "fail" : "warn");
   const badges: Badge[] = [
-    { label: `SPF · ${spfFail ? "fail" : "pass"}`, state: spfFail ? "fail" : "pass" },
+    { label: `SPF · ${spfVerdict === "unknown" ? "missing" : spfVerdict}`, state: stateOf(spfVerdict) },
     {
-      label: `DKIM · ${dkimFail ? "mismatch" : "aligned"}`,
-      state: dkimFail ? "warn" : "pass",
+      label: `DKIM · ${dkimFail ? (dkimMisaligned ? "mismatch" : "fail") : dkimVerdict === "unknown" ? "missing" : "aligned"}`,
+      state: dkimFail ? "fail" : stateOf(dkimVerdict),
     },
     {
-      label: `DMARC · ${dmarcFail ? "fail" : "pass"}`,
-      state: dmarcFail ? "fail" : "pass",
+      label: `DMARC · ${dmarcVerdict === "unknown" ? "missing" : dmarcVerdict}`,
+      state: stateOf(dmarcVerdict),
     },
   ];
 
@@ -201,13 +236,13 @@ export function analyze(raw: string): Analysis {
   const linkCount = (text.match(/https?:\/\/[^\s"'<>]+/gi) ?? []).length;
   const payloadCount = attachments.length;
   const originIp = extractOriginIp(text);
-  const authOk = !spfFail && !dkimFail && !dmarcFail;
+  const authOk = allPass && !dkimFail;
 
   const narrative = !text
     ? "Paste raw headers or MIME above, or load a demo sample, and the engine will render a cited narrative here."
     : authOk
       ? `Message from ${domain} ("${subject}") passes SPF, DKIM and DMARC, so the sender identity is cryptographically verified. ${payloadCount || linkCount ? `${payloadCount + linkCount} link/payload artifact(s) were found but none are executable-grade;` : "No malicious links or payloads were detected;"} origin ${originIp} shows no authentication anomalies.`
-      : `Message claiming to be from ${domain} ("${subject}") fails authentication — SPF ${spfFail ? "FAIL" : "pass"}, DKIM ${dkimFail ? (dkimMisaligned && !dkimRawFail ? "domain mismatch" : "FAIL") : "pass"}, DMARC ${dmarcFail ? (dkimMisaligned && !dmarcExplicitFail ? "FAIL (domain misalignment)" : "REJECT") : "pass"} — so the sender identity cannot be verified. ${payloadCount || linkCount ? `${payloadCount + linkCount} link/payload artifact(s) detected and` : "No payloads detected, but"} origin ${originIp} is untrusted; recommend quarantine and edge block.`;
+      : `Message claiming to be from ${domain} ("${subject}") fails authentication — SPF ${spfVerdict === "unknown" ? "missing" : spfVerdict.toUpperCase()}, DKIM ${dkimFail ? (dkimMisaligned ? "domain mismatch" : "FAIL") : dkimVerdict === "unknown" ? "missing" : "pass"}, DMARC ${dmarcVerdict === "unknown" ? "missing" : dmarcVerdict.toUpperCase()} — so the sender identity cannot be verified. ${payloadCount || linkCount ? `${payloadCount + linkCount} link/payload artifact(s) detected and` : "No payloads detected, but"} origin ${originIp} is untrusted; recommend quarantine and edge block.`;
 
   return {
     score,
