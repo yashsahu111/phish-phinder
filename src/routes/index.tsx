@@ -653,6 +653,42 @@ function Index() {
 
               <p className="ai-copy">{a.narrative}</p>
 
+              {a.identityInsight && (
+                <div className="ai-insight">
+                  <span>AI Insights</span>
+                  <p>{a.identityInsight}</p>
+                </div>
+              )}
+
+              <div className="judge-grid">
+                <div className="judge-card">
+                  <span>Threat Category</span>
+                  <strong>{a.judge.category}</strong>
+                </div>
+                <div className="judge-card">
+                  <span>System Risk Level</span>
+                  <strong
+                    style={{ color: a.judge.systemRisk.startsWith("Low") ? "var(--green)" : "var(--red)" }}
+                  >
+                    {a.judge.systemRisk}
+                  </strong>
+                </div>
+                <div className="judge-card">
+                  <span>User Risk Level</span>
+                  <strong
+                    style={{
+                      color: a.judge.userRisk.startsWith("Low")
+                        ? "var(--green)"
+                        : a.judge.userRisk.startsWith("High")
+                          ? "var(--orange)"
+                          : "var(--red)",
+                    }}
+                  >
+                    {a.judge.userRisk}
+                  </strong>
+                </div>
+              </div>
+
               {a.signals.map((s) => (
                 <div className="signal" key={s.label}>
                   {s.label}

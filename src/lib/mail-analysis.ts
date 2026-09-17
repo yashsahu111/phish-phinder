@@ -26,6 +26,8 @@ export interface Analysis {
     | "Malicious Payload / Link Hazard"
     | "Clean / Low Risk";
   threatContext: string;
+  identityInsight: string | null;
+  judge: { category: string; systemRisk: string; userRisk: string };
   sender: string;
   badges: Badge[];
   metrics: { label: string; value: string }[];
@@ -234,6 +236,37 @@ export function analyze(raw: string): Analysis {
           ? `Warning: The language in “${subject}” uses urgency or financial pressure associated with phishing attempts. Verify the request through a trusted channel before taking action.`
           : `No material authentication, payload, link, or social-engineering risks were identified for ${domain}. The message currently presents a low-risk profile.`;
 
+  const routingDomain = dkimDomain || envelopeDomain || "";
+  const identityInsight =
+    threatType === "Identity Spoofing & Domain Impersonation"
+      ? `Identity Fraud Detected: The message was routed via ${routingDomain || "an unverified relay"}, but failed domain alignment with ${domain}. This indicates unauthorized domain spoofing designed for credential theft rather than direct system malware execution.`
+      : null;
+
+  const judge =
+    threatType === "Identity Spoofing & Domain Impersonation"
+      ? {
+          category: "Identity Spoofing & Phishing Hazard",
+          systemRisk: "Low (No malicious code execution)",
+          userRisk: "Critical (High probability of social engineering & password theft)",
+        }
+      : threatType === "Malicious Payload / Link Hazard"
+        ? {
+            category: "Malicious Payload & Link Hazard",
+            systemRisk: "Critical (Executable artifact present)",
+            userRisk: "High (Malware or credential capture on interaction)",
+          }
+        : threatType === "Social Engineering & Phishing"
+          ? {
+              category: "Social Engineering & Phishing Hazard",
+              systemRisk: "Low (No malicious code execution)",
+              userRisk: "Critical (Urgency & financial pressure tactics)",
+            }
+          : {
+              category: "No Active Threat Detected",
+              systemRisk: "Low (No malicious code execution)",
+              userRisk: "Low (Authenticated sender, no manipulation cues)",
+            };
+
   const stateOf = (v: AuthVerdict): AuthState => (v === "pass" ? "pass" : v === "fail" ? "fail" : "warn");
   const badges: Badge[] = [
     {
@@ -317,6 +350,8 @@ export function analyze(raw: string): Analysis {
     severityColor,
     threatType,
     threatContext,
+    identityInsight,
+    judge,
     sender: from,
     badges,
     metrics: [
