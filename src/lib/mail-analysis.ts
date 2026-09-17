@@ -210,18 +210,33 @@ export function analyze(raw: string): Analysis {
     narrative,
     signals: [
       {
-        label: "SPF / DKIM / DMARC alignment",
-        value: `${spfFail ? "FAIL" : "PASS"} · ${dkimFail ? "FAIL" : "PASS"} · ${dmarcReject ? "REJECT" : "PASS"}`,
+        label: "Domain & Sender Verification",
+        value: authOk ? "PASS (Authenticated)" : "FAIL (Unverified Sender)",
+        color: authOk ? GREEN : RED,
       },
       {
-        label: "Attachment detonation · sandbox",
-        value: dangerous.length ? "EMU · RANSOM-NOTE" : attachments.length ? "INERT · DOC" : "NONE",
+        label: "File & Link Security Scan",
+        value:
+          linkCount + payloadCount > 0
+            ? `HIGH RISK (${linkCount + payloadCount} Links / Payloads Found)`
+            : "CLEAN (No Malicious Payloads)",
+        color: linkCount + payloadCount > 0 ? RED : GREEN,
       },
       {
-        label: "Infrastructure reputation · WHOIS / VT",
-        value: score > 70 ? "TOR · 14d" : "AGED · 7y",
+        label: "Server Origin & Reputation",
+        value:
+          !authOk || score > 70
+            ? `SUSPICIOUS (${originIp})`
+            : `VERIFIED (${originIp})`,
+        color: !authOk || score > 70 ? (score > 70 ? RED : ORANGE) : GREEN,
       },
     ],
+    senderDomain: domain,
+    subject,
+    linkCount,
+    payloadCount,
+    originIp,
+    authOk,
     hops,
     relayLabel: `${chain.length} relays · ${40 + (score % 60)} ms RTT`,
     mapStatus: score > 70 ? "THREATFEED · LIVE" : "THREATFEED · NOMINAL",
