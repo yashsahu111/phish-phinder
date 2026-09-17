@@ -87,8 +87,18 @@ export function analyze(raw: string): Analysis {
   // --- Dynamic math-based scoring engine ---
   // Additive penalties from a 5-point baseline; no hardcoded sample overrides.
   const spfFail = /\bspf\s*=\s*fail\b|received-spf:\s*fail/i.test(text);
-  const dkimFail = /\bdkim\s*=\s*(fail|mismatch)\b/i.test(text);
-  const dmarcReject = /\bdmarc\s*=\s*(fail|reject)\b/i.test(text);
+  const dkimRawFail = /\bdkim\s*=\s*(fail|mismatch)\b/i.test(text);
+  const dmarcExplicitFail = /\bdmarc\s*=\s*(fail|reject)\b/i.test(text) || /\bDMARC:\s*['"]?FAIL\b/i.test(text);
+
+  // --- DMARC alignment check ---
+  // Compare the From: domain against the DKIM signing domain (d= / header.i=).
+  // A mismatch forces DKIM "mismatch" and DMARC "fail" even if raw dkim=pass exists.
+  const dkimDomain =
+    text.match(/\bd\s*=\s*([\w.-]+)/i)?.[1] ?? text.match(/header\.i\s*=\s*@?([\w.-]+)/i)?.[1] ?? "";
+  const dkimMisaligned =
+    dkimDomain !== "" && domain !== "unknown" && dkimDomain.toLowerCase() !== domain.toLowerCase();
+  const dkimFail = dkimRawFail || dkimMisaligned;
+  const dmarcFail = dmarcExplicitFail || dkimMisaligned;
 
   const domainFlag =
     SUSPECT_TLD.test(domain) || SUSPECT_TLD.test(text) || FAKE_DOMAIN.test(domain) || FAKE_DOMAIN.test(text);
