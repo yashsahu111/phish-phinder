@@ -112,23 +112,52 @@ export function analyze(raw: string): Analysis {
   const spfVerdict: AuthVerdict = tier1("spf") !== "unknown" ? tier1("spf") : tier2("spf");
   const dkimVerdict: AuthVerdict = tier1("dkim") !== "unknown" ? tier1("dkim") : tier2("dkim");
 
-  // DKIM alignment: From: domain vs DKIM signing domain (d= / header.i=)
+  // --- RFC 7489 domain alignment ---
+  const orgDomain = (d: string) => {
+    const parts = d.toLowerCase().replace(/\.$/, "").split(".");
+    if (parts.length <= 2) return parts.join(".");
+    const twoLevel = /^(co|com|org|net|gov|edu|ac)\.[a-z]{2}$/.test(parts.slice(-2).join("."));
+    return parts.slice(twoLevel ? -3 : -2).join(".");
+  };
+  const aligns = (candidate: string) => {
+    if (!candidate || domain === "unknown") return false;
+    const c = candidate.toLowerCase();
+    const f = domain.toLowerCase();
+    if (c === f || c.endsWith(`.${f}`) || f.endsWith(`.${c}`)) return true;
+    return orgDomain(c) === orgDomain(f);
+  };
+
   const dkimDomain =
     text.match(/\bd\s*=\s*([\w.-]+)/i)?.[1] ?? text.match(/header\.i\s*=\s*@?([\w.-]+)/i)?.[1] ?? "";
-  const dkimMisaligned =
-    dkimDomain !== "" && domain !== "unknown" && dkimDomain.toLowerCase() !== domain.toLowerCase();
+  const returnPath = header(text, "Return-Path") || header(text, "Return-path");
+  const envelopeDomain =
+    (returnPath.match(/@([\w.-]+)/) ?? [])[1] ??
+    text.match(/smtp\.mailfrom\s*=\s*(?:[\w.+-]+@)?([\w.-]+)/i)?.[1] ??
+    text.match(/envelope-from\s*=?\s*<?(?:[\w.+-]+@)?([\w.-]+)/i)?.[1] ??
+    "";
+
+  const dkimAligned = dkimDomain !== "" && aligns(dkimDomain);
+  const spfAligned = envelopeDomain !== "" && aligns(envelopeDomain);
+  const dkimUnaligned = dkimVerdict === "pass" && dkimDomain !== "" && !dkimAligned;
+  const spfUnaligned = spfVerdict === "pass" && envelopeDomain !== "" && !spfAligned;
+  const dkimMisaligned = dkimUnaligned;
+
+  const dkimPassAligned = dkimVerdict === "pass" && dkimAligned;
+  const spfPassAligned = spfVerdict === "pass" && spfAligned;
 
   const dmarcExplicit: AuthVerdict = tier1("dmarc") !== "unknown" ? tier1("dmarc") : tier2("dmarc");
-  let dmarcVerdict: AuthVerdict = dmarcExplicit;
-  if (dmarcVerdict === "unknown") {
-    // Mismatch alone does not fail DMARC unless an explicit fail flag exists.
-    if (dkimVerdict === "pass" && spfVerdict !== "fail") dmarcVerdict = "pass";
-  } else if (dmarcVerdict === "fail" && dkimMisaligned) {
+  let dmarcVerdict: AuthVerdict;
+  if (dkimPassAligned || spfPassAligned) {
+    dmarcVerdict = dmarcExplicit === "fail" ? "fail" : "pass";
+  } else if (dkimUnaligned || spfUnaligned || dmarcExplicit === "fail") {
+    // authenticated but unaligned, or explicitly failing → DMARC fails
     dmarcVerdict = "fail";
+  } else {
+    dmarcVerdict = dmarcExplicit === "pass" ? "pass" : dmarcExplicit;
   }
 
   const spfFail = spfVerdict === "fail";
-  const dkimFail = dkimVerdict === "fail" || (dkimMisaligned && dmarcExplicit === "fail");
+  const dkimFail = dkimVerdict === "fail";
   const dmarcFail = dmarcVerdict === "fail";
 
   const domainFlag =
@@ -139,7 +168,8 @@ export function analyze(raw: string): Analysis {
 
   // --- TIER 3: universal threat scoring bands ---
   const verdicts = [spfVerdict, dkimVerdict, dmarcVerdict];
-  const failCount = verdicts.filter((v) => v === "fail").length;
+  const alignmentFails = (dkimUnaligned ? 1 : 0) + (spfUnaligned ? 1 : 0);
+  const failCount = verdicts.filter((v) => v === "fail").length + alignmentFails;
   const unknownCount = verdicts.filter((v) => v === "unknown").length;
   const allPass = failCount === 0 && unknownCount === 0;
   const critical = dmarcFail && (domainFlag || payloadHit || failCount >= 2);
@@ -171,10 +201,13 @@ export function analyze(raw: string): Analysis {
 
   const stateOf = (v: AuthVerdict): AuthState => (v === "pass" ? "pass" : v === "fail" ? "fail" : "warn");
   const badges: Badge[] = [
-    { label: `SPF · ${spfVerdict === "unknown" ? "missing" : spfVerdict}`, state: stateOf(spfVerdict) },
     {
-      label: `DKIM · ${dkimFail ? (dkimMisaligned ? "mismatch" : "fail") : dkimVerdict === "unknown" ? "missing" : "aligned"}`,
-      state: dkimFail ? "fail" : stateOf(dkimVerdict),
+      label: `SPF · ${spfUnaligned ? "unaligned" : spfVerdict === "unknown" ? "missing" : spfVerdict}`,
+      state: spfUnaligned ? "fail" : stateOf(spfVerdict),
+    },
+    {
+      label: `DKIM · ${dkimUnaligned ? "unaligned" : dkimFail ? "fail" : dkimVerdict === "unknown" ? "missing" : "aligned"}`,
+      state: dkimUnaligned || dkimFail ? "fail" : stateOf(dkimVerdict),
     },
     {
       label: `DMARC · ${dmarcVerdict === "unknown" ? "missing" : dmarcVerdict}`,
