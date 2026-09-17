@@ -297,6 +297,17 @@
 .mailai .metric:hover { border-color: var(--line-bright); transform: translateY(-2px); }
 .mailai .metric span { display: block; color: var(--muted); font: 9px "JetBrains Mono", monospace; letter-spacing: .13em; text-transform: uppercase; }
 .mailai .metric strong { display: block; margin-top: 7px; font: 22px "Space Grotesk", sans-serif; }
+.mailai .threat-type {
+  display: grid; grid-template-columns: minmax(0, .65fr) minmax(0, 1.35fr); align-items: center; gap: 14px;
+  margin-top: 12px; padding: 13px; border: 1px solid var(--line-bright); border-radius: 15px;
+  background: rgba(255,255,255,.035);
+}
+.mailai .threat-type span, .mailai .threat-context span {
+  color: var(--muted); font: 9px "JetBrains Mono", monospace; letter-spacing: .13em; text-transform: uppercase;
+}
+.mailai .threat-type strong { color: var(--text); font: 600 13px/1.45 "Space Grotesk", sans-serif; text-align: right; overflow-wrap: anywhere; }
+.mailai .threat-context { margin-top: 10px; padding: 13px 14px; border: 1px solid var(--line-bright); border-radius: 15px; }
+.mailai .threat-context p { margin: 7px 0 0; color: #cbd5e1; font-size: 11px; line-height: 1.65; }
 .mailai .bottom-grid { grid-column: span 12; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 18px; align-items: stretch; }
 .mailai .bottom-grid .map-card { grid-column: span 2; width: 100%; }
 .mailai .bottom-grid .forensics-card { grid-column: span 1; width: 100%; padding: 16px; display: flex; flex-direction: column; }
@@ -360,6 +371,8 @@
   .mailai .metrics { gap: 6px; }
   .mailai .metric { padding: 10px; }
   .mailai .metric strong { font-size: 18px; }
+  .mailai .threat-type { grid-template-columns: 1fr; }
+  .mailai .threat-type strong { text-align: left; }
   .mailai footer { flex-direction: column; line-height: 1.6; }
 }
 

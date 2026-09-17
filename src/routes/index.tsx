@@ -14,13 +14,13 @@ import { lookupIpGeo, type IpGeo } from "@/lib/ip-geo.functions";
 export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
-      { title: "Mail AI — Email Threat & Incident Response Dashboard" },
+      { title: "Threat Radar — Email Threat & Incident Response Dashboard" },
       {
         name: "description",
         content:
-          "Paste raw email headers or MIME and Mail AI returns a live threat score, SPF/DKIM/DMARC verdicts, hop-by-hop origin trace and an AI incident narrative.",
+          "Paste raw email headers or MIME and Threat Radar returns a live threat score, threat classification, authentication verdicts, origin trace and incident narrative.",
       },
-      { property: "og:title", content: "Mail AI — Email Incident Response Dashboard" },
+      { property: "og:title", content: "Threat Radar — Email Incident Response Dashboard" },
       {
         property: "og:description",
         content:
@@ -94,7 +94,7 @@ function Index() {
     setSubmitted(sample);
   };
 
-  const INCIDENT_ID = "MA-90341";
+  const INCIDENT_ID = "TR-90341";
   const EVIDENCE_HASH = "SHA-256: C4:9A:7E:11:0B:D3:88:F1:02";
 
   const dispatchSubject = `[URGENT INCIDENT REPORT] Phishing Threat Detected - ID: ${INCIDENT_ID}`;
@@ -147,7 +147,7 @@ function Index() {
       doc.setFontSize(8);
       doc.setFont("helvetica", "normal");
       doc.setTextColor(148, 163, 184);
-      doc.text("Mail AI Security Lab · ThreatTrace Engine v4.2", pageW / 2, 19, {
+       doc.text("Threat Radar Security Lab · Analysis Engine v4.2", pageW / 2, 19, {
         align: "center",
       });
 
@@ -187,6 +187,7 @@ function Index() {
         body: [
           ["Threat Score", `${a.score}%`],
           ["Severity Level", a.severity.toUpperCase()],
+           ["Primary Threat Type", a.threatType],
           ...a.badges.map((b): [string, string] => {
             const [name, status] = b.label.split(/[:·]/).map((s) => s.trim());
             return [name ?? b.label, status ?? b.label];
@@ -277,7 +278,7 @@ function Index() {
         );
       }
 
-      doc.save("ThreatTrace-Forensic-Report.pdf");
+       doc.save("Threat-Radar-Forensic-Report.pdf");
       setDownloadLabel("Report downloaded");
       setTimeout(() => {
         setDownloadLabel("Download Forensic PDF");
@@ -309,7 +310,7 @@ function Index() {
             </div>
             <div>
               <h1 className="brand-name display">
-                Mail <span>AI</span>
+                Threat <span>Radar</span>
               </h1>
               <p className="eyebrow">Email incident response · engine v4.2</p>
             </div>
@@ -334,9 +335,9 @@ function Index() {
               Quarantine the incoming mail. <em style={{ color: "var(--orange)", fontStyle: "normal" }}>Trace it to the origin.</em>
             </h2>
             <p style={{ maxWidth: 470, marginTop: 18, color: "var(--muted)", lineHeight: 1.7, fontSize: 14 }}>
-              Paste headers or raw MIME, upload the source artifact, and Mail AI renders
+              Paste headers or raw MIME, upload the source artifact, and Threat Radar renders
               threat score, hop chain, and intent in seconds. Case{" "}
-              <span className="case-id">#MA-90341</span> is active.
+              <span className="case-id">#{INCIDENT_ID}</span> is active.
             </p>
           </div>
           <div className="sync">
@@ -469,6 +470,19 @@ function Index() {
                   <strong>{m.value}</strong>
                 </div>
               ))}
+            </div>
+
+            <div className="threat-type">
+              <span>Primary Threat Type</span>
+              <strong>{a.threatType}</strong>
+            </div>
+
+            <div
+              className="threat-context"
+              style={{ borderColor: a.severityColor + "66", background: a.severityColor + "10" }}
+            >
+              <span style={{ color: a.severityColor }}>Threat Context</span>
+              <p>{a.threatContext}</p>
             </div>
           </section>
 
@@ -657,7 +671,7 @@ function Index() {
                 Dispatch Evidence to CyberCell
               </button>
               <div className="export-meta">
-                <span>ThreatTrace-Forensic-Report.pdf</span>
+                 <span>Threat-Radar-Forensic-Report.pdf</span>
                 <span>2.4 MB</span>
                 <span>
                   Generated <strong>just now</strong>
@@ -706,7 +720,7 @@ function Index() {
         )}
 
         <footer>
-          <span>Mail AI Security Lab · SOC-2 Type II · Data residency EU-Central</span>
+          <span>Threat Radar Security Lab · SOC-2 Type II · Data residency EU-Central</span>
           <span>Heuristic ensemble: RF · GNN · LLM-cite · 11/11 nominal</span>
         </footer>
       </div>
