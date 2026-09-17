@@ -168,7 +168,8 @@ export function analyze(raw: string): Analysis {
 
   // --- TIER 3: universal threat scoring bands ---
   const verdicts = [spfVerdict, dkimVerdict, dmarcVerdict];
-  const failCount = verdicts.filter((v) => v === "fail").length;
+  const alignmentFails = (dkimUnaligned ? 1 : 0) + (spfUnaligned ? 1 : 0);
+  const failCount = verdicts.filter((v) => v === "fail").length + alignmentFails;
   const unknownCount = verdicts.filter((v) => v === "unknown").length;
   const allPass = failCount === 0 && unknownCount === 0;
   const critical = dmarcFail && (domainFlag || payloadHit || failCount >= 2);
@@ -200,10 +201,13 @@ export function analyze(raw: string): Analysis {
 
   const stateOf = (v: AuthVerdict): AuthState => (v === "pass" ? "pass" : v === "fail" ? "fail" : "warn");
   const badges: Badge[] = [
-    { label: `SPF · ${spfVerdict === "unknown" ? "missing" : spfVerdict}`, state: stateOf(spfVerdict) },
     {
-      label: `DKIM · ${dkimFail ? (dkimMisaligned ? "mismatch" : "fail") : dkimVerdict === "unknown" ? "missing" : "aligned"}`,
-      state: dkimFail ? "fail" : stateOf(dkimVerdict),
+      label: `SPF · ${spfUnaligned ? "unaligned" : spfVerdict === "unknown" ? "missing" : spfVerdict}`,
+      state: spfUnaligned ? "fail" : stateOf(spfVerdict),
+    },
+    {
+      label: `DKIM · ${dkimUnaligned ? "unaligned" : dkimFail ? "fail" : dkimVerdict === "unknown" ? "missing" : "aligned"}`,
+      state: dkimUnaligned || dkimFail ? "fail" : stateOf(dkimVerdict),
     },
     {
       label: `DMARC · ${dmarcVerdict === "unknown" ? "missing" : dmarcVerdict}`,
