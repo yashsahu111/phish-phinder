@@ -187,12 +187,27 @@ function Index() {
         body: [
           ["Threat Score", `${a.score}%`],
           ["Severity Level", a.severity.toUpperCase()],
-           ["Primary Threat Type", a.threatType],
+          ["Primary Threat Type", a.threatType],
+          ["Threat Context", a.threatContext],
+          ["Sender Identity", `${a.sender} (${a.senderDomain})`],
+          ["Subject", a.subject || "Not present"],
+          [
+            "Attachments",
+            a.attachments.length
+              ? a.attachments.join(", ")
+              : "No executable attachments detected",
+          ],
+          ["Links / Payload References", `${a.linkCount} link(s) · ${a.payloadCount} payload reference(s)`],
           ...a.badges.map((b): [string, string] => {
             const [name, status] = b.label.split(/[:·]/).map((s) => s.trim());
             return [name ?? b.label, status ?? b.label];
           }),
+          ...a.signals.map((s): [string, string] => [s.label, s.value]),
+          ...a.metrics.map((m): [string, string] => [`Metric · ${m.label}`, m.value]),
           ["AI Narrative Analysis", a.narrative],
+          ...(a.identityInsight
+            ? ([["AI Identity Insight", a.identityInsight]] as [string, string][])
+            : []),
         ],
         theme: "striped",
         headStyles: { fillColor: [15, 23, 42], fontSize: 9 },
