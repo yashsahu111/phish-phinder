@@ -341,7 +341,7 @@ function Index() {
             </div>
             <div>
               <h1 className="brand-name display">
-                Threat <span>Radar</span>
+                Mail <span>Shield</span>
               </h1>
               <p className="eyebrow">Email incident response · engine v4.2</p>
             </div>
