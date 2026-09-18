@@ -14,13 +14,13 @@ import { lookupIpGeo, type IpGeo } from "@/lib/ip-geo.functions";
 export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
-      { title: "Threat Radar — Email Threat & Incident Response Dashboard" },
+      { title: "MailShield — Email Threat & Incident Response Dashboard" },
       {
         name: "description",
         content:
-          "Paste raw email headers or MIME and Threat Radar returns a live threat score, threat classification, authentication verdicts, origin trace and incident narrative.",
+          "Paste raw email headers or MIME and MailShield returns a live threat score, threat classification, authentication verdicts, origin trace and incident narrative.",
       },
-      { property: "og:title", content: "Threat Radar — Email Incident Response Dashboard" },
+      { property: "og:title", content: "MailShield — Email Incident Response Dashboard" },
       {
         property: "og:description",
         content:
@@ -147,7 +147,7 @@ function Index() {
       doc.setFontSize(8);
       doc.setFont("helvetica", "normal");
       doc.setTextColor(148, 163, 184);
-       doc.text("Threat Radar Security Lab · Analysis Engine v4.2", pageW / 2, 19, {
+       doc.text("MailShield Security Lab · Analysis Engine v4.2", pageW / 2, 19, {
         align: "center",
       });
 
@@ -341,7 +341,7 @@ function Index() {
             </div>
             <div>
               <h1 className="brand-name display">
-                Threat <span>Radar</span>
+                Mail <span>Shield</span>
               </h1>
               <p className="eyebrow">Email incident response · engine v4.2</p>
             </div>
@@ -366,7 +366,7 @@ function Index() {
               Quarantine the incoming mail. <em style={{ color: "var(--orange)", fontStyle: "normal" }}>Trace it to the origin.</em>
             </h2>
             <p style={{ maxWidth: 470, marginTop: 18, color: "var(--muted)", lineHeight: 1.7, fontSize: 14 }}>
-              Paste headers or raw MIME, upload the source artifact, and Threat Radar renders
+              Paste headers or raw MIME, upload the source artifact, and MailShield renders
               threat score, hop chain, and intent in seconds. Case{" "}
               <span className="case-id">#{INCIDENT_ID}</span> is active.
             </p>
@@ -787,7 +787,7 @@ function Index() {
         )}
 
         <footer>
-          <span>Threat Radar Security Lab · SOC-2 Type II · Data residency EU-Central</span>
+          <span>MailShield Security Lab · SOC-2 Type II · Data residency EU-Central</span>
           <span>Heuristic ensemble: RF · GNN · LLM-cite · 11/11 nominal</span>
         </footer>
       </div>
