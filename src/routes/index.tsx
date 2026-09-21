@@ -92,11 +92,6 @@ function Index() {
     };
   }, [submitted]);
 
-  // Project lat/lon onto the 620x400 map grid (equirectangular).
-  const pin = geo
-    ? { x: ((geo.lon + 180) / 360) * 620, y: ((90 - geo.lat) / 180) * 400 }
-    : null;
-
   useEffect(() => {
     setActive(0);
     setGauge(0);
