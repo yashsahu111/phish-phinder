@@ -12,3 +12,10 @@
 - [x] Drive node IPs, colors, trajectories, and labels from parsed hops
 - [x] Add selectable relay detail overlays
 - [x] Verify preset updates, desktop/mobile layout, and build health
+
+## Interactive origin trace enhancement
+
+- [x] Restore animated trajectory arcs, glowing nodes, and live grid metadata
+- [x] Add persistent selected-hop reverse DNS and RTT status
+- [x] Synchronize the IP Forensics panel with the selected relay
+- [x] Verify every preset and relay selection on desktop and mobile

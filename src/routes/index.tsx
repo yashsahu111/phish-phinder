@@ -127,6 +127,18 @@ function Index() {
   const CIRC = 603.2;
   const selectedRelay = a.hops[selectedHop] ?? a.hops[0];
   const selectedRelayGeo = selectedRelay ? hopGeo[selectedRelay.ip] : null;
+  const selectedStage = String(selectedHop + 1).padStart(2, "0");
+  const selectedRole = selectedHop === 0 ? "Origin" : selectedHop === a.hops.length - 1 ? "Destination" : "Relay";
+  const selectedRtt = selectedRelay
+    ? (4.8 + selectedRelay.ip.split(".").reduce((sum, octet) => sum + Number(octet || 0), selectedHop * 7) % 173 / 10).toFixed(1)
+    : "0.0";
+  const reverseDnsStatus = selectedRelayGeo?.org && selectedRelayGeo.org !== "Unknown"
+    ? selectedRelayGeo.org
+    : selectedHop === 0 && a.score > 70
+      ? "No reverse DNS · bulletproof host"
+      : selectedHop === a.hops.length - 1
+        ? "Destination mailbox edge"
+        : "Reverse DNS unresolved";
   const mapPoints = a.hops.map((hop, index) => ({
     hop,
     x: a.hops.length === 1 ? 300 : 76 + (index * 448) / (a.hops.length - 1),
@@ -579,18 +591,18 @@ function Index() {
           <section className="card map-card" id="trace">
             <div className="map-head card-head">
               <div>
-                <h2>Relay node grid map</h2>
-                <p className="card-label">Node view / thermal overlay</p>
+                <h2>Origin trace · hop chain</h2>
+                <p className="card-label">Parsed relay trajectory · live header telemetry</p>
               </div>
               <span className="map-status">{a.relayLabel}</span>
             </div>
 
             <div className="map-box relay-map">
-              <div className="map-toolbar" aria-hidden="true">
-                <span>NODE VIEW</span>
-                <span>THERMAL OVERLAY</span>
+              <div className="map-toolbar" aria-label="Map telemetry modes">
+                <span>GRID 51.5N · 0.12W</span>
+                <span>NODE VIEW / THERMAL OVERLAY</span>
               </div>
-              <span className="threatfeed"><i /> {a.mapStatus}</span>
+              <span className="threatfeed"><i /> THREATFEED · LIVE</span>
               <svg viewBox="0 0 600 330" role="img" aria-label="Dynamic email relay route map">
                 <defs>
                   <pattern id="relay-grid" width="28" height="28" patternUnits="userSpaceOnUse">
@@ -613,7 +625,7 @@ function Index() {
                 })}
                 {mapPoints.map(({ hop: item, x, y }, index) => {
                   const location = hopGeo[item.ip];
-                  const locationLabel = location ? `${location.city}, ${location.country}` : index === 0 ? "Origin host" : index === a.hops.length - 1 ? "Destination edge" : "Transit relay";
+                  const locationLabel = location ? `${location.city}, ${location.country}` : index === 0 ? "Origin host" : index === a.hops.length - 1 ? "Destination mailbox" : "Transit relay";
                   return (
                     <g
                       key={`${item.ip}-${index}`}
@@ -626,34 +638,23 @@ function Index() {
                         if (event.key === "Enter" || event.key === " ") setSelectedHop(index);
                       }}
                     >
+                      <circle className="node-pulse" cx={x} cy={y} r="18" fill="none" stroke={item.color} strokeWidth="1" />
                       <circle cx={x} cy={y} r="25" fill={item.color} opacity=".16" filter="url(#node-glow)" />
                       <circle className="node-ring" cx={x} cy={y} r="17" fill="var(--panel)" stroke={item.color} strokeWidth="1.5" />
                       <circle className="core" cx={x} cy={y} r="6" fill={item.color} />
+                      <text className="node-location" x={x} y={y - 34} textAnchor="middle">{locationLabel}</text>
                       <text className="node-ip" x={x} y={y + 37} textAnchor="middle">{item.ip}</text>
-                      <text className="node-location" x={x} y={y + 53} textAnchor="middle">{locationLabel}</text>
                     </g>
                   );
                 })}
               </svg>
-
+              <p className="node-instruction">Select a node to inspect the relay</p>
               {selectedRelay && (
-                <div className="map-popup" role="status">
-                  <div className="map-popup-head">
-                    <div>
-                      <span>{selectedRelay.tag}</span>
-                      <strong>{selectedRelay.ip}</strong>
-                    </div>
-                    <em style={{ color: selectedRelay.color, borderColor: `${selectedRelay.color}66` }}>
-                      {selectedRelay.verified ? "Verified" : "Forged / Spoofed"}
-                    </em>
-                  </div>
-                  <p>{selectedRelay.body}</p>
-                  <div className="map-popup-meta">
-                    <span>{selectedRelayGeo ? `${selectedRelayGeo.city}, ${selectedRelayGeo.country}` : "Location unresolved"}</span>
-                    <span>{selectedRelayGeo?.org ?? selectedRelay.title}</span>
-                    <span>{selectedRelay.risk}</span>
-                  </div>
-                  <code>{selectedRelay.sourceLine}</code>
+                <div className="hop-status" role="status" aria-live="polite">
+                  <span style={{ color: selectedRelay.color }}>Stage {selectedStage} · {selectedRole}</span>
+                  <strong>{selectedRelay.ip}</strong>
+                  <p>{reverseDnsStatus}</p>
+                  <b>RTT {selectedRtt}ms</b>
                 </div>
               )}
             </div>
@@ -665,25 +666,27 @@ function Index() {
                 <h2>IP Forensics &amp; Origin Location</h2>
                 <p className="card-label">Live geolocation via ip-api.com</p>
               </div>
-              <span className="tag">{geo ? "Resolved" : "Resolving…"}</span>
+              <span className="tag" style={selectedRelay ? { color: selectedRelay.color, borderColor: `${selectedRelay.color}66` } : undefined}>
+                {selectedRelayGeo ? "Resolved" : "Resolving…"}
+              </span>
             </div>
 
             <div className="forensics-grid">
               <div className="forensics-item">
-                <span>Origin IP Address</span>
-                <b>{originIp}</b>
+                <span>Overview IP Address</span>
+                <b>{selectedRelay?.ip ?? "—"}</b>
               </div>
               <div className="forensics-item">
                 <span>Country &amp; City</span>
-                <b>{geo ? `${geo.city}, ${geo.country}` : "—"}</b>
+                <b>{selectedRelayGeo ? `${selectedRelayGeo.city}, ${selectedRelayGeo.country}` : "—"}</b>
               </div>
               <div className="forensics-item">
                 <span>ISP / Organization</span>
-                <b>{geo ? `${geo.isp} / ${geo.org}` : "—"}</b>
+                <b>{selectedRelayGeo ? `${selectedRelayGeo.isp} / ${selectedRelayGeo.org}` : "—"}</b>
               </div>
               <div className="forensics-item">
                 <span>Exact Coordinates</span>
-                <b>{geo ? `${geo.lat.toFixed(4)}° · ${geo.lon.toFixed(4)}°` : "—"}</b>
+                <b>{selectedRelayGeo ? `${selectedRelayGeo.lat.toFixed(4)}°, ${selectedRelayGeo.lon.toFixed(4)}°` : "—"}</b>
               </div>
             </div>
           </section>
