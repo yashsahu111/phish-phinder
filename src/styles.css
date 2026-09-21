@@ -219,7 +219,7 @@
 .mailai .status i { width: 7px; height: 7px; border-radius: 50%; background: var(--green); box-shadow: 0 0 14px var(--green); }
 .mailai .hero { display: flex; align-items: end; justify-content: space-between; gap: 30px; padding: 38px 0 30px; }
 .mailai .preset-bar {
-  display: flex; align-items: center; flex-wrap: wrap; gap: 9px; margin-bottom: 18px; padding: 12px;
+  display: flex; align-items: center; flex-wrap: wrap; gap: 9px; margin: 18px 0 0; padding: 12px;
   border: 1px solid var(--line); border-radius: 16px; background: rgba(13,18,27,.84);
 }
 .mailai .preset-bar > span { margin: 0 5px; color: var(--muted-2); font: 9px "JetBrains Mono", monospace; letter-spacing: .15em; text-transform: uppercase; }
@@ -286,8 +286,6 @@
   border-radius: 10px; color: var(--muted); font: 10px "JetBrains Mono", monospace;
 }
 .mailai .file-chip i { width: 6px; height: 6px; border-radius: 50%; background: var(--orange); }
-.mailai .evidence-chip { background: transparent; text-align: left; }
-.mailai .evidence-chip:hover, .mailai .evidence-chip:focus-visible { background: rgba(255,255,255,.05); outline: 2px solid currentColor; outline-offset: 2px; }
 .mailai .remove { margin-left: 3px; padding: 0; border: 0; color: var(--muted-2); background: none; }
 .mailai .remove:hover { color: var(--red); }
 .mailai .score-top { display: flex; align-items: flex-start; justify-content: space-between; }
@@ -331,18 +329,14 @@
 .mailai .hop-console { margin: 0 20px; overflow: hidden; border: 1px solid var(--line); border-radius: 18px; background: linear-gradient(155deg, rgba(21,32,51,.9), rgba(8,11,17,.96)); }
 .mailai .hop-chain { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap: 24px; align-items: center; min-height: 230px; padding: 32px 24px; }
 .mailai .hop-stage { position: relative; min-width: 0; }
-.mailai .hop-node { display: flex; flex-direction: column; align-items: flex-start; width: 100%; min-height: 145px; padding: 18px; border: 1px solid var(--line-bright); border-radius: 14px; color: var(--text); background: rgba(5,9,15,.78); text-align: left; transition: transform .2s, border-color .2s, box-shadow .2s; }
-.mailai .hop-node:hover, .mailai .hop-node.active { transform: translateY(-3px); border-color: rgba(72,200,240,.55); box-shadow: 0 12px 30px rgba(0,0,0,.3); }
+.mailai .hop-node { display: flex; flex-direction: column; align-items: flex-start; width: 100%; min-height: 145px; padding: 18px; border: 1px solid var(--line-bright); border-radius: 14px; color: var(--text); background: rgba(5,9,15,.78); text-align: left; }
 .mailai .hop-node i { width: 10px; height: 10px; border-radius: 50%; box-shadow: 0 0 15px currentColor; }
 .mailai .hop-node span { margin-top: 16px; color: var(--muted); font: 9px "JetBrains Mono", monospace; letter-spacing: .12em; text-transform: uppercase; }
 .mailai .hop-node strong { margin-top: 7px; overflow-wrap: anywhere; font: 600 13px "Space Grotesk", sans-serif; }
 .mailai .hop-node em { margin-top: auto; padding: 5px 7px; border-radius: 6px; font: normal 8px "JetBrains Mono", monospace; text-transform: uppercase; }
 .mailai .hop-node em.verified { color: var(--green); background: rgba(50,230,169,.1); }
 .mailai .hop-node em.forged { color: var(--red); background: rgba(255,82,101,.1); }
-.mailai .hop-arrow { position: absolute; top: 58px; right: -21px; z-index: 2; color: var(--blue); font-size: 23px; animation: hop-flow 1.2s ease-in-out infinite alternate; }
-@keyframes hop-flow { to { transform: translateX(5px); opacity: .55; } }
-.mailai .hop-readout { padding: 15px; border-top: 1px solid var(--line); background: rgba(4,8,14,.72); }
-.mailai .hop-readout code { display: block; margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--line); color: var(--muted); font: 10px/1.6 "JetBrains Mono", monospace; overflow-wrap: anywhere; }
+.mailai .hop-arrow { position: absolute; top: 58px; right: -21px; z-index: 2; color: var(--blue); font-size: 23px; }
 .mailai #map { display: block; width: 100%; min-height: 360px; }
 .mailai .map-readout {
   position: absolute; right: 12px; bottom: 12px; left: 12px; padding: 14px;
@@ -435,8 +429,6 @@
   background: rgba(148, 163, 184, 0.05);
   min-width: 0;
 }
-.mailai .evidence-item { width: 100%; color: inherit; text-align: left; cursor: pointer; }
-.mailai .evidence-item:hover, .mailai .evidence-item:focus-visible { border-color: rgba(72,200,240,.55); outline: 0; }
 .mailai .forensics-item span {
   display: block;
   font-size: 10px;
@@ -575,40 +567,11 @@
   filter: brightness(1.1);
 }
 
-/* Command-center terminal */
-.mailai .terminal { grid-column: span 12; overflow: hidden; border: 1px solid var(--line); border-radius: 16px; background: #05080d; box-shadow: var(--shadow); }
-.mailai .terminal-head { display: flex; align-items: center; justify-content: space-between; width: 100%; padding: 14px 17px; border: 0; color: var(--muted); background: #090d14; font: 9px "JetBrains Mono", monospace; letter-spacing: .13em; }
-.mailai .terminal-head span { display: flex; align-items: center; gap: 9px; }
-.mailai .terminal-head i { width: 7px; height: 7px; border-radius: 50%; background: var(--green); box-shadow: 0 0 12px var(--green); }
-.mailai .terminal-head b { color: var(--blue); font-weight: 500; }
-.mailai .terminal-body { max-height: 280px; overflow: auto; padding: 16px 18px 19px; border-top: 1px solid var(--line); font: 11px/1.75 "JetBrains Mono", monospace; }
-.mailai .terminal-body p { margin: 0; color: #aeb9c9; }
-.mailai .terminal-body p span { color: var(--blue); }
-.mailai .terminal-body p.warn span { color: var(--orange); }
-.mailai .terminal-body p.success span { color: var(--green); }
-.mailai .terminal-cursor { width: 8px; height: 14px; margin-top: 5px; background: var(--green); animation: terminal-blink .9s steps(1) infinite; }
-@keyframes terminal-blink { 50% { opacity: 0; } }
-
-/* Forensic inspector */
-.mailai .drawer-overlay { position: fixed; inset: 0; z-index: 120; background: rgba(2,5,10,.62); backdrop-filter: blur(3px); }
-.mailai .forensic-drawer { position: absolute; top: 0; right: 0; width: min(460px,100%); height: 100%; overflow-y: auto; padding: 25px; border-left: 1px solid rgba(72,200,240,.28); background: #0a101a; box-shadow: -25px 0 70px rgba(0,0,0,.5); animation: drawer-in .28s ease-out; }
-@keyframes drawer-in { from { transform: translateX(100%); } }
-.mailai .drawer-head { display: flex; align-items: flex-start; justify-content: space-between; padding-bottom: 18px; border-bottom: 1px solid var(--line); }
-.mailai .drawer-head span, .mailai .forensic-drawer section > span { color: var(--blue); font: 9px "JetBrains Mono", monospace; letter-spacing: .15em; text-transform: uppercase; }
-.mailai .drawer-head h3 { margin: 6px 0 0; font: 600 25px "Space Grotesk", sans-serif; }
-.mailai .drawer-head button, .mailai .evidence-banner > button { border: 0; color: var(--muted); background: transparent; font-size: 25px; }
-.mailai .drawer-verdict { display: flex; align-items: center; justify-content: space-between; margin: 20px 0; padding: 14px; border: 1px solid var(--line); border-radius: 12px; }
-.mailai .drawer-verdict span { color: var(--muted); font: 9px "JetBrains Mono", monospace; text-transform: uppercase; }
-.mailai .drawer-verdict.pass strong { color: var(--green); }.mailai .drawer-verdict.fail strong { color: var(--red); }.mailai .drawer-verdict.warn strong { color: var(--orange); }
-.mailai .forensic-drawer section { margin-top: 22px; }
-.mailai .forensic-drawer pre { white-space: pre-wrap; overflow-wrap: anywhere; margin: 9px 0 0; padding: 14px; border: 1px solid var(--line); border-radius: 10px; color: #c5d0df; background: #05080d; font: 10px/1.7 "JetBrains Mono", monospace; }
-.mailai .forensic-drawer section p { color: #c5d0df; line-height: 1.7; }
-.mailai .forensic-drawer section a { display: inline-block; margin-top: 9px; color: var(--green); font: 11px "JetBrains Mono", monospace; }
-
 /* Legal evidence preview */
 .mailai .evidence-modal { width: min(820px,100%); max-height: 90vh; overflow-y: auto; border: 1px solid rgba(72,200,240,.3); border-radius: 16px; background: #0b111c; box-shadow: 0 28px 80px rgba(0,0,0,.58); }
 .mailai .evidence-banner { display: grid; grid-template-columns: auto 1fr auto; gap: 17px; align-items: center; padding: 20px; border-bottom: 1px solid var(--line); background: #0f172a; }
 .mailai .evidence-banner > div > span { color: var(--blue); font: 9px "JetBrains Mono", monospace; letter-spacing: .12em; }
+.mailai .evidence-banner > button { border: 0; color: var(--muted); background: transparent; font-size: 25px; }
 .mailai .evidence-banner h3 { margin: 5px 0 2px; font: 600 19px "Space Grotesk", sans-serif; }
 .mailai .evidence-banner p { margin: 0; color: var(--muted); font-size: 11px; }
 .mailai .police-seal { display: grid; place-items: center; width: 72px; height: 72px; border: 2px solid var(--blue); border-radius: 50%; box-shadow: inset 0 0 0 5px #0f172a, inset 0 0 0 6px rgba(72,200,240,.35); }
@@ -634,6 +597,5 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .mailai .route, .mailai .pulse, .mailai .hop-arrow, .mailai .terminal-cursor { animation: none; }
-  .mailai .forensic-drawer { animation: none; }
+  .mailai .route, .mailai .pulse { animation: none; }
 }
