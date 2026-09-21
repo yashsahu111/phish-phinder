@@ -415,6 +415,12 @@
   color: #7c8798;
   font-family: "JetBrains Mono", monospace;
 }
+.mailai .forensics-note {
+  margin-top: 10px;
+  font-size: 11px;
+  line-height: 1.5;
+  color: #7c8798;
+}
 .mailai .forensics-item b {
   display: block;
   margin-top: 6px;
