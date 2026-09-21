@@ -825,7 +825,7 @@ function Index() {
                 {downloadLabel}
               </button>
               <button className="dispatch" onClick={() => setDispatchOpen(true)}>
-                Dispatch Evidence to CyberCell
+                Generate Evidence Package
               </button>
               <div className="export-meta">
                 <span><b>Evidence ID</b>{EVIDENCE_ID}</span>
@@ -849,7 +849,7 @@ function Index() {
           <div className="dispatch-overlay" onClick={() => setDispatchOpen(false)}>
             <div className="dispatch-modal" onClick={(e) => e.stopPropagation()}>
               <div className="dispatch-head">
-                <h3>Dispatch Evidence to CyberCell</h3>
+                <h3>Prepare for Official Submission</h3>
                 <button
                   className="dispatch-close"
                   onClick={() => setDispatchOpen(false)}
