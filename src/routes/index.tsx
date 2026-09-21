@@ -47,7 +47,7 @@ function Index() {
   const [active, setActive] = useState(0);
   const [gauge, setGauge] = useState(0);
   const [clock, setClock] = useState("00:00:00");
-  const [downloadLabel, setDownloadLabel] = useState("Download Forensic PDF");
+  const [downloadLabel, setDownloadLabel] = useState("Download BSA §63 Evidence Package");
   const [busy, setBusy] = useState(false);
   const [geo, setGeo] = useState<IpGeo | null>(null);
   const [dispatchOpen, setDispatchOpen] = useState(false);
@@ -112,7 +112,9 @@ function Index() {
     "AI Threat Summary:",
     a.narrative,
     "",
-    "Full forensic evidence report (Form 65B compliant) is attached as PDF.",
+    "Full BSA §63 Electronic Evidence Package is attached as PDF.",
+    "Statutory basis: Bharatiya Sakshya Adhiniyam, 2023 — Section 63 (supersedes the Legacy Indian Evidence Act §65B).",
+    "This package is an evidence record prepared under BSA §63; it does not by itself certify courtroom admissibility.",
   ]
     .filter(Boolean)
     .join("\n");
@@ -137,20 +139,28 @@ function Index() {
       doc.setFillColor(15, 23, 42); // #0f172a
       doc.rect(0, 0, pageW, 26, "F");
       doc.setFont("helvetica", "bold");
-      doc.setFontSize(11);
+      doc.setFontSize(10);
       doc.setTextColor(255, 255, 255);
       doc.text(
-        "OFFICIAL CYBERCRIME FORENSIC EVIDENCE REPORT | FORM 65B COMPLIANT",
+        "OFFICIAL CYBERCRIME FORENSIC EVIDENCE REPORT | BSA §63 ELECTRONIC EVIDENCE PACKAGE",
         pageW / 2,
         11,
         { align: "center" },
       );
-      doc.setFontSize(8);
+      doc.setFontSize(7.5);
       doc.setFont("helvetica", "normal");
       doc.setTextColor(148, 163, 184);
-       doc.text("MailShield Security Lab · Analysis Engine v4.2", pageW / 2, 19, {
+       doc.text("MailShield Security Lab · Analysis Engine v4.2 · Bharatiya Sakshya Adhiniyam, 2023 — Section 63", pageW / 2, 18, {
         align: "center",
       });
+      doc.setFontSize(6.5);
+      doc.setTextColor(100, 116, 139);
+      doc.text(
+        "Prepared as an electronic evidence record under BSA §63 (Legacy Indian Evidence Act §65B superseded). This package does not by itself certify courtroom admissibility.",
+        pageW / 2,
+        22.5,
+        { align: "center" },
+      );
 
       let y = 34;
 
@@ -313,7 +323,7 @@ function Index() {
        doc.save("Threat-Radar-Forensic-Report.pdf");
       setDownloadLabel("Report downloaded");
       setTimeout(() => {
-        setDownloadLabel("Download Forensic PDF");
+        setDownloadLabel("Download BSA §63 Evidence Package");
         setBusy(false);
       }, 1800);
     }, 850);
@@ -740,6 +750,7 @@ function Index() {
               </button>
               <div className="export-meta">
                  <span>Threat-Radar-Forensic-Report.pdf</span>
+                <span>BSA §63 Electronic Evidence Package</span>
                 <span>2.4 MB</span>
                 <span>
                   Generated <strong>just now</strong>
