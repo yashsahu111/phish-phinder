@@ -30,6 +30,7 @@ export interface Analysis {
   judge: { category: string; systemRisk: string; userRisk: string };
   sender: string;
   badges: Badge[];
+  authDetails: { label: string; value: string; state: AuthState }[];
   metrics: { label: string; value: string }[];
   attachments: string[];
   narrative: string;
@@ -354,6 +355,62 @@ export function analyze(raw: string): Analysis {
     judge,
     sender: from,
     badges,
+    authDetails: [
+      {
+        label: "From domain",
+        value: domain,
+        state: domain === "unknown" ? "warn" : "pass",
+      },
+      {
+        label: "SPF domain (envelope)",
+        value: envelopeDomain || "not detected",
+        state: envelopeDomain ? "pass" : "warn",
+      },
+      {
+        label: "SPF result",
+        value: spfVerdict === "unknown" ? "not detected" : spfVerdict.toUpperCase(),
+        state: stateOf(spfVerdict),
+      },
+      {
+        label: "SPF alignment",
+        value:
+          spfVerdict === "fail"
+            ? "n/a (SPF failed)"
+            : spfVerdict !== "pass"
+              ? "n/a"
+              : spfAligned
+                ? "aligned with From domain"
+                : "not aligned",
+        state: spfUnaligned ? "fail" : spfAligned ? "pass" : "warn",
+      },
+      {
+        label: "DKIM signing domain (d=)",
+        value: dkimDomain || "not detected",
+        state: dkimDomain ? "pass" : "warn",
+      },
+      {
+        label: "DKIM result",
+        value: dkimVerdict === "unknown" ? "not detected" : dkimVerdict.toUpperCase(),
+        state: stateOf(dkimVerdict),
+      },
+      {
+        label: "DKIM alignment",
+        value:
+          dkimVerdict === "fail"
+            ? "n/a (DKIM failed)"
+            : dkimVerdict !== "pass"
+              ? "n/a"
+              : dkimAligned
+                ? "aligned with From domain"
+                : "not aligned",
+        state: dkimUnaligned ? "fail" : dkimAligned ? "pass" : "warn",
+      },
+      {
+        label: "DMARC result",
+        value: dmarcVerdict === "unknown" ? "not detected" : dmarcVerdict.toUpperCase(),
+        state: stateOf(dmarcVerdict),
+      },
+    ],
     metrics: [
       { label: "Spoof", value: spoofMetric.toFixed(2) },
       { label: "Payload", value: payloadMetric.toFixed(2) },

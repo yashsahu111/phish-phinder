@@ -41,6 +41,9 @@ const badgeStyle = (state: AuthState) =>
       ? { color: "var(--orange)", borderColor: "rgba(255,180,84,.4)" }
       : { color: "var(--green)", borderColor: "rgba(50,230,169,.4)" };
 
+const authStateColor = (state: AuthState) =>
+  state === "fail" ? "var(--red)" : state === "warn" ? "var(--orange)" : "var(--green)";
+
 const formatBytes = (bytes: number) => {
   if (bytes < 1024) return `${bytes} B`;
   if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
@@ -481,6 +484,19 @@ function Index() {
                 </span>
               ))}
             </div>
+
+            <div className="auth-details" aria-label="Authentication details">
+              <div className="auth-details-head">AUTHENTICATION DETAILS</div>
+              {a.authDetails.map((row) => (
+                <div key={row.label} className="auth-row">
+                  <span className="auth-label">{row.label}</span>
+                  <span className="auth-value" style={{ color: authStateColor(row.state) }}>
+                    {row.value}
+                  </span>
+                </div>
+              ))}
+            </div>
+
 
             <textarea
               id="mime"
