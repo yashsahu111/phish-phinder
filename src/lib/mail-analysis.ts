@@ -380,7 +380,9 @@ export function analyze(raw: string): Analysis {
               ? "n/a"
               : spfAligned
                 ? "aligned with From domain"
-                : "not aligned",
+                : envelopeDomain
+                  ? "not aligned"
+                  : "not evaluable (no envelope domain)",
         state: spfUnaligned ? "fail" : spfAligned ? "pass" : "warn",
       },
       {
@@ -402,7 +404,9 @@ export function analyze(raw: string): Analysis {
               ? "n/a"
               : dkimAligned
                 ? "aligned with From domain"
-                : "not aligned",
+                : dkimDomain
+                  ? "not aligned"
+                  : "not evaluable (no signing domain)",
         state: dkimUnaligned ? "fail" : dkimAligned ? "pass" : "warn",
       },
       {
