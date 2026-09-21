@@ -90,6 +90,17 @@ function Index() {
   const hop = (a.hops[active] ?? a.hops[0])!;
   const CIRC = 603.2;
 
+  // Assessment confidence: how much real evidence the rule-based engine had.
+  // Low = no authentication data at all; Medium = score near a band boundary;
+  // High = clear evidence well away from band edges.
+  const missingAuthCount = a.badges.filter((b) => b.label.includes("missing")).length;
+  const confidence =
+    missingAuthCount >= 3
+      ? "Low"
+      : (a.score >= 25 && a.score <= 35) || (a.score >= 60 && a.score <= 80)
+        ? "Medium"
+        : "High";
+
   const load = (sample: string) => {
     setMime(sample);
     setSubmitted(sample);
@@ -466,7 +477,7 @@ function Index() {
             <div className="score-top">
               <div>
                 <h2>Threat score</h2>
-                <p className="card-label">ML ensemble · 11 models · p={(a.score / 100).toFixed(3)}</p>
+                <p className="card-label">Rule-based header assessment</p>
               </div>
               <span
                 className="severity"
@@ -499,9 +510,9 @@ function Index() {
               <div className="gauge-number">
                 <strong>
                   {gauge}
-                  <span>%</span>
+                  <span>/100</span>
                 </strong>
-                <small>Malicious intent</small>
+                <small>Assessment Confidence: {confidence}</small>
               </div>
             </div>
 
