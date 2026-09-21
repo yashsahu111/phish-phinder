@@ -46,11 +46,13 @@ const badgeStyle = (state: AuthState) =>
 function Index() {
   const [mime, setMime] = useState(PHISHING_SAMPLE);
   const [submitted, setSubmitted] = useState(PHISHING_SAMPLE);
+  const [selectedHop, setSelectedHop] = useState(0);
   const [gauge, setGauge] = useState(0);
   const [clock, setClock] = useState("00:00:00");
   const [downloadLabel, setDownloadLabel] = useState("Download Forensic PDF");
   const [busy, setBusy] = useState(false);
   const [geo, setGeo] = useState<IpGeo | null>(null);
+  const [hopGeo, setHopGeo] = useState<Record<string, IpGeo | null>>({});
   const [dispatchOpen, setDispatchOpen] = useState(false);
   const [evidenceOpen, setEvidenceOpen] = useState(false);
   const [investigatorName, setInvestigatorName] = useState("");
@@ -72,6 +74,27 @@ function Index() {
       cancelled = true;
     };
   }, [originIp]);
+
+  useEffect(() => {
+    let cancelled = false;
+    setSelectedHop(0);
+    setHopGeo({});
+    const ips = Array.from(new Set(a.hops.map((hop) => hop.ip)));
+    Promise.all(
+      ips.map(async (ip) => {
+        try {
+          return [ip, await lookupIpGeo({ data: { ip } })] as const;
+        } catch {
+          return [ip, null] as const;
+        }
+      }),
+    ).then((entries) => {
+      if (!cancelled) setHopGeo(Object.fromEntries(entries));
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [a.hops]);
 
   useEffect(() => {
     let cancelled = false;
@@ -102,6 +125,13 @@ function Index() {
   }, []);
 
   const CIRC = 603.2;
+  const selectedRelay = a.hops[selectedHop] ?? a.hops[0];
+  const selectedRelayGeo = selectedRelay ? hopGeo[selectedRelay.ip] : null;
+  const mapPoints = a.hops.map((hop, index) => ({
+    hop,
+    x: a.hops.length === 1 ? 300 : 76 + (index * 448) / (a.hops.length - 1),
+    y: index % 2 === 0 ? 212 : 105,
+  }));
 
   const load = (sample: string) => {
     setMime(sample);
@@ -549,28 +579,83 @@ function Index() {
           <section className="card map-card" id="trace">
             <div className="map-head card-head">
               <div>
-                <h2>Origin trace · hop chain</h2>
-                <p className="card-label">Observed delivery route</p>
+                <h2>Relay node grid map</h2>
+                <p className="card-label">Node view / thermal overlay</p>
               </div>
               <span className="map-status">{a.relayLabel}</span>
             </div>
 
-            <div className="hop-console">
-              <div className="hop-chain" role="list" aria-label="Email relay chain">
-                {a.hops.map((item, index) => (
-                  <div className="hop-stage" key={`${item.ip}-${index}`} role="listitem">
-                    <div className="hop-node">
-                      <i style={{ background: item.verified ? "var(--green)" : "var(--red)" }} />
-                      <span>{index === 0 ? "Origin IP" : index === a.hops.length - 1 ? "Destination Mailbox" : `MTA Relay ${index}`}</span>
-                      <strong>{item.ip}</strong>
-                      <em className={item.verified ? "verified" : "forged"}>
-                        {item.verified ? "Verified" : "Forged / Spoofed"}
-                      </em>
-                    </div>
-                    {index < a.hops.length - 1 && <span className="hop-arrow" aria-hidden="true">→</span>}
-                  </div>
-                ))}
+            <div className="map-box relay-map">
+              <div className="map-toolbar" aria-hidden="true">
+                <span>NODE VIEW</span>
+                <span>THERMAL OVERLAY</span>
               </div>
+              <span className="threatfeed"><i /> {a.mapStatus}</span>
+              <svg viewBox="0 0 600 330" role="img" aria-label="Dynamic email relay route map">
+                <defs>
+                  <pattern id="relay-grid" width="28" height="28" patternUnits="userSpaceOnUse">
+                    <path d="M 28 0 L 0 0 0 28" fill="none" stroke="currentColor" strokeWidth="0.55" />
+                  </pattern>
+                  <filter id="node-glow"><feGaussianBlur stdDeviation="7" /></filter>
+                </defs>
+                <rect width="600" height="330" fill="url(#relay-grid)" className="map-grid" />
+                {mapPoints.slice(0, -1).map((point, index) => {
+                  const next = mapPoints[index + 1];
+                  if (!next) return null;
+                  const controlY = Math.min(point.y, next.y) - 72;
+                  return (
+                    <path
+                      key={`path-${point.hop.ip}-${next.hop.ip}`}
+                      className="route"
+                      d={`M ${point.x} ${point.y} Q ${(point.x + next.x) / 2} ${controlY} ${next.x} ${next.y}`}
+                    />
+                  );
+                })}
+                {mapPoints.map(({ hop: item, x, y }, index) => {
+                  const location = hopGeo[item.ip];
+                  const locationLabel = location ? `${location.city}, ${location.country}` : index === 0 ? "Origin host" : index === a.hops.length - 1 ? "Destination edge" : "Transit relay";
+                  return (
+                    <g
+                      key={`${item.ip}-${index}`}
+                      className={`node${index === selectedHop ? " active" : ""}`}
+                      role="button"
+                      tabIndex={0}
+                      aria-label={`View ${item.ip} relay details`}
+                      onClick={() => setSelectedHop(index)}
+                      onKeyDown={(event) => {
+                        if (event.key === "Enter" || event.key === " ") setSelectedHop(index);
+                      }}
+                    >
+                      <circle cx={x} cy={y} r="25" fill={item.color} opacity=".16" filter="url(#node-glow)" />
+                      <circle className="node-ring" cx={x} cy={y} r="17" fill="var(--panel)" stroke={item.color} strokeWidth="1.5" />
+                      <circle className="core" cx={x} cy={y} r="6" fill={item.color} />
+                      <text className="node-ip" x={x} y={y + 37} textAnchor="middle">{item.ip}</text>
+                      <text className="node-location" x={x} y={y + 53} textAnchor="middle">{locationLabel}</text>
+                    </g>
+                  );
+                })}
+              </svg>
+
+              {selectedRelay && (
+                <div className="map-popup" role="status">
+                  <div className="map-popup-head">
+                    <div>
+                      <span>{selectedRelay.tag}</span>
+                      <strong>{selectedRelay.ip}</strong>
+                    </div>
+                    <em style={{ color: selectedRelay.color, borderColor: `${selectedRelay.color}66` }}>
+                      {selectedRelay.verified ? "Verified" : "Forged / Spoofed"}
+                    </em>
+                  </div>
+                  <p>{selectedRelay.body}</p>
+                  <div className="map-popup-meta">
+                    <span>{selectedRelayGeo ? `${selectedRelayGeo.city}, ${selectedRelayGeo.country}` : "Location unresolved"}</span>
+                    <span>{selectedRelayGeo?.org ?? selectedRelay.title}</span>
+                    <span>{selectedRelay.risk}</span>
+                  </div>
+                  <code>{selectedRelay.sourceLine}</code>
+                </div>
+              )}
             </div>
           </section>
 
