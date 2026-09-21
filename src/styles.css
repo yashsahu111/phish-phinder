@@ -331,6 +331,9 @@
 .mailai .ai-title { display: flex; align-items: center; gap: 12px; padding-bottom: 17px; border-bottom: 1px solid var(--line); }
 .mailai .ai-badge { display: grid; place-items: center; width: 38px; height: 38px; border-radius: 12px; color: var(--bg); background: linear-gradient(135deg, var(--purple), var(--blue)); }
 .mailai .ai-copy { margin: 19px 0; color: #cbd5e1; font-size: 14px; line-height: 1.8; }
+.mailai .ai-tag-row { display: flex; align-items: center; gap: 8px; margin: 0 0 8px; }
+.mailai .ai-tag { padding: 2px 8px; border: 1px solid var(--line); border-radius: 20px; color: var(--muted); font: 8.5px "JetBrains Mono", monospace; letter-spacing: .14em; text-transform: uppercase; white-space: nowrap; }
+.mailai .ai-tag-desc { color: var(--muted); font-size: 10.5px; }
 .mailai .ai-insight {
   margin: 14px 0; padding: 14px 16px; border: 1px solid rgba(148,132,255,.45); border-radius: 15px;
   background: linear-gradient(140deg, rgba(148,132,255,.12), rgba(72,200,240,.05));
