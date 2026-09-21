@@ -333,11 +333,12 @@
 .mailai .map-toolbar span { padding: 6px 8px; border: 1px solid var(--line-bright); border-radius: 6px; color: var(--blue); background: rgba(7,10,16,.82); font: 8px "JetBrains Mono", monospace; letter-spacing: .11em; }
 .mailai .threatfeed { position: absolute; top: 13px; right: 13px; z-index: 3; display: flex; align-items: center; gap: 7px; color: var(--red); font: 8px "JetBrains Mono", monospace; letter-spacing: .1em; }
 .mailai .threatfeed i { width: 6px; height: 6px; border-radius: 50%; background: currentColor; box-shadow: 0 0 10px currentColor; animation: mailai-live 1.4s ease-in-out infinite; }
-.mailai .route { fill: none; stroke: var(--blue); stroke-width: 1.6; stroke-dasharray: 7 8; opacity: .78; filter: drop-shadow(0 0 4px rgba(72,200,240,.35)); animation: mailai-dash 1.2s linear infinite, mailai-route-pulse 2.4s ease-in-out infinite; }
+.mailai .route { fill: none; stroke: var(--blue); stroke-width: 1.6; stroke-dasharray: 8 8; opacity: .78; filter: drop-shadow(0 0 4px rgba(72,200,240,.35)); animation: mailai-dash 2s linear infinite, mailai-route-pulse 2.4s ease-in-out infinite; }
 .mailai .node { cursor: pointer; outline: none; }
 .mailai .node-pulse { transform-box: fill-box; transform-origin: center; animation: mailai-node-pulse 2s ease-out infinite; }
-.mailai .node-ring { transition: stroke-width .2s, opacity .2s; }
-.mailai .node .core { transform-box: fill-box; transform-origin: center; transition: transform .25s; }
+.mailai .node-ring { transform-box: fill-box; transform-origin: center; transition: stroke-width .2s, opacity .2s; animation: mailai-ring-pulse 2s ease-in-out infinite; }
+.mailai .glow-dot { transform-box: fill-box; transform-origin: center; animation: mailai-glow-pulse 2.2s ease-in-out infinite; }
+.mailai .node .core { transform-box: fill-box; transform-origin: center; transition: transform .25s; animation: mailai-core-pulse 2s ease-in-out infinite; }
 .mailai .node:hover .core, .mailai .node.active .core, .mailai .node:focus-visible .core { transform: scale(1.45); }
 .mailai .node.active .node-ring, .mailai .node:focus-visible .node-ring { stroke-width: 3; }
 .mailai .node-ip { fill: var(--text); font: 10px "JetBrains Mono", monospace; }

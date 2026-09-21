@@ -639,7 +639,7 @@ function Index() {
                       }}
                     >
                       <circle className="node-pulse" cx={x} cy={y} r="18" fill="none" stroke={item.color} strokeWidth="1" />
-                      <circle cx={x} cy={y} r="25" fill={item.color} opacity=".16" filter="url(#node-glow)" />
+                      <circle className="glow-dot" cx={x} cy={y} r="25" fill={item.color} opacity=".16" filter="url(#node-glow)" />
                       <circle className="node-ring" cx={x} cy={y} r="17" fill="var(--panel)" stroke={item.color} strokeWidth="1.5" />
                       <circle className="core" cx={x} cy={y} r="6" fill={item.color} />
                       <text className="node-location" x={x} y={y - 34} textAnchor="middle">{locationLabel}</text>
