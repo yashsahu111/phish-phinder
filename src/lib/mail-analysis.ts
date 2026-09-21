@@ -298,7 +298,7 @@ export function analyze(raw: string): Analysis {
     if (i === 0) {
       return {
         tag: "Stage 01 · Origin",
-        title: `${ip} — ${score > 70 ? "bulletproof host" : "sending MTA"}`,
+        title: `${ip} — ${score > 70 ? "hosting / reputation classification" : "sending MTA"}`,
         body:
           score > 70
             ? `No reverse DNS · anonymising exit rotation · first seen with spoofed ${domain} envelope.`

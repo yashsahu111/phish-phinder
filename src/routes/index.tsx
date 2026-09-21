@@ -672,10 +672,13 @@ function Index() {
                 <b>{geo ? `${geo.isp} / ${geo.org}` : "—"}</b>
               </div>
               <div className="forensics-item">
-                <span>Exact Coordinates</span>
+                <span>Network Geolocation</span>
                 <b>{geo ? `${geo.lat.toFixed(4)}° · ${geo.lon.toFixed(4)}°` : "—"}</b>
               </div>
             </div>
+            <p className="forensics-note">
+              IP geolocation represents approximate network location and does not identify an attacker's physical location.
+            </p>
           </section>
           </div>
 
