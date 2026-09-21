@@ -8,7 +8,7 @@
 
 ## Dynamic relay map
 
-- [ ] Restore the Relay Node Grid Map with node and thermal views
-- [ ] Drive node IPs, colors, trajectories, and labels from parsed hops
-- [ ] Add selectable relay detail overlays
-- [ ] Verify preset updates, desktop/mobile layout, and build health
+- [x] Restore the Relay Node Grid Map with node and thermal views
+- [x] Drive node IPs, colors, trajectories, and labels from parsed hops
+- [x] Add selectable relay detail overlays
+- [x] Verify preset updates, desktop/mobile layout, and build health
