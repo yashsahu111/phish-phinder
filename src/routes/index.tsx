@@ -4,10 +4,14 @@ import { jsPDF } from "jspdf";
 import autoTable from "jspdf-autotable";
 import {
   analyze,
+  BEC_SAMPLE,
   extractOriginIp,
+  PAYLOAD_SAMPLE,
   PHISHING_SAMPLE,
   SAFE_SAMPLE,
+  SPOOF_SAMPLE,
   type AuthState,
+  type InspectorRecord,
 } from "@/lib/mail-analysis";
 import { lookupIpGeo, type IpGeo } from "@/lib/ip-geo.functions";
 
@@ -50,6 +54,12 @@ function Index() {
   const [busy, setBusy] = useState(false);
   const [geo, setGeo] = useState<IpGeo | null>(null);
   const [dispatchOpen, setDispatchOpen] = useState(false);
+  const [inspector, setInspector] = useState<InspectorRecord | null>(null);
+  const [terminalOpen, setTerminalOpen] = useState(true);
+  const [evidenceOpen, setEvidenceOpen] = useState(false);
+  const [investigatorName, setInvestigatorName] = useState("");
+  const [investigatorDesignation, setInvestigatorDesignation] = useState("");
+  const [evidenceHash, setEvidenceHash] = useState("Calculating SHA-256…");
 
   const a = useMemo(() => analyze(submitted), [submitted]);
   const originIp = useMemo(() => extractOriginIp(submitted), [submitted]);
@@ -66,6 +76,21 @@ function Index() {
       cancelled = true;
     };
   }, [originIp]);
+
+  useEffect(() => {
+    let cancelled = false;
+    const bytes = new TextEncoder().encode(submitted);
+    crypto.subtle.digest("SHA-256", bytes).then((digest) => {
+      if (cancelled) return;
+      const hash = Array.from(new Uint8Array(digest), (byte) => byte.toString(16).padStart(2, "0"))
+        .join("")
+        .toUpperCase();
+      setEvidenceHash(`SHA-256: ${hash}`);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [submitted]);
 
   // Project lat/lon onto the 620x400 map grid (equirectangular).
   const pin = geo
@@ -86,7 +111,7 @@ function Index() {
     return () => clearInterval(id);
   }, []);
 
-  const hop = (a.hops[active] ?? a.hops[0])!;
+  const hop = a.hops[active] ?? a.hops[0];
   const CIRC = 603.2;
 
   const load = (sample: string) => {
@@ -95,7 +120,6 @@ function Index() {
   };
 
   const INCIDENT_ID = "TR-90341";
-  const EVIDENCE_HASH = "SHA-256: C4:9A:7E:11:0B:D3:88:F1:02";
 
   const dispatchSubject = `[URGENT INCIDENT REPORT] Phishing Threat Detected - ID: ${INCIDENT_ID}`;
   const dispatchBody = [
@@ -164,7 +188,7 @@ function Index() {
         margin: { left: margin, right: margin },
         body: [
           ["Incident ID", INCIDENT_ID, "Timestamp", new Date().toUTCString()],
-          ["Evidence Hash", EVIDENCE_HASH, "Forensic Status", "SEALED · TAMPER-EVIDENT"],
+           ["Evidence Hash", evidenceHash, "Forensic Status", "SEALED · TAMPER-EVIDENT"],
         ],
         theme: "grid",
         styles: { fontSize: 8.5, cellPadding: 2.5 },
@@ -172,6 +196,17 @@ function Index() {
           0: { fontStyle: "bold", fillColor: [241, 245, 249], cellWidth: 32 },
           2: { fontStyle: "bold", fillColor: [241, 245, 249], cellWidth: 32 },
         },
+      });
+      y = (doc as unknown as { lastAutoTable: { finalY: number } }).lastAutoTable.finalY + 10;
+
+      autoTable(doc, {
+        startY: y,
+        margin: { left: margin, right: margin },
+        head: [["Investigator Sign-off", "Designation"]],
+        body: [[investigatorName || "Not provided", investigatorDesignation || "Not provided"]],
+        theme: "grid",
+        headStyles: { fillColor: [15, 23, 42], fontSize: 9 },
+        styles: { fontSize: 8.5, cellPadding: 3 },
       });
       y = (doc as unknown as { lastAutoTable: { finalY: number } }).lastAutoTable.finalY + 10;
 
@@ -309,7 +344,8 @@ function Index() {
         );
       }
 
-       doc.save("Threat-Radar-Forensic-Report.pdf");
+       doc.save("MailShield-Forensic-Report.pdf");
+      setEvidenceOpen(false);
       setDownloadLabel("Report downloaded");
       setTimeout(() => {
         setDownloadLabel("Download Forensic PDF");
@@ -376,6 +412,14 @@ function Index() {
           </div>
         </section>
 
+        <nav className="preset-bar" aria-label="Threat simulation presets">
+          <span>Scenario presets</span>
+          <button onClick={() => load(SPOOF_SAMPLE)}>⚡ Load Spoof Attack</button>
+          <button onClick={() => load(SAFE_SAMPLE)}>🛡️ Load Clean Email</button>
+          <button onClick={() => load(BEC_SAMPLE)}>💼 Load BEC Scam</button>
+          <button onClick={() => load(PAYLOAD_SAMPLE)}>☣️ Load Payload Threat</button>
+        </nav>
+
         <div className="grid">
           <section className="card input-card" id="intake">
             <div className="card-head">
@@ -396,10 +440,16 @@ function Index() {
 
             <div className="file-list">
               <span className="file-chip">From: {a.sender}</span>
-              {a.badges.map((b) => (
-                <span key={b.label} className="file-chip" style={badgeStyle(b.state)}>
+              {a.badges.map((b, index) => (
+                <button
+                  type="button"
+                  key={b.label}
+                  className="file-chip evidence-chip"
+                  style={badgeStyle(b.state)}
+                  onClick={() => setInspector(a.inspector[index] ?? null)}
+                >
                   {b.label}
-                </span>
+                </button>
               ))}
             </div>
 
@@ -431,12 +481,7 @@ function Index() {
             </div>
 
             <div className="demo-row">
-              <button className="demo safe" onClick={() => load(SAFE_SAMPLE)}>
-                Load Safe Sample
-              </button>
-              <button className="demo bad" onClick={() => load(PHISHING_SAMPLE)}>
-                Load Phishing Sample
-              </button>
+              <button className="demo bad" onClick={() => load(PHISHING_SAMPLE)}>Load Combined Attack</button>
             </div>
 
             {a.attachments.length > 0 && (
@@ -527,90 +572,28 @@ function Index() {
               <span className="map-status">{a.relayLabel}</span>
             </div>
 
-            <div className="map-box">
-              <svg id="map" viewBox="0 0 620 400" role="img" aria-label="Relay hop trace">
-                <g stroke="rgba(148,163,184,.13)" strokeWidth="1">
-                  {[60, 120, 180, 240, 300, 360].map((y) => (
-                    <line key={y} x1="0" y1={y} x2="620" y2={y} />
-                  ))}
-                  {[80, 180, 280, 380, 480, 580].map((x) => (
-                    <line key={x} x1={x} y1="0" x2={x} y2="400" />
-                  ))}
-                </g>
-                <text x="20" y="30" fill="#526073" fontFamily="JetBrains Mono, monospace" fontSize="10">
-                  GRID 51.5N · 0.12W
-                </text>
-                <text x="20" y="48" fill="#526073" fontFamily="JetBrains Mono, monospace" fontSize="10">
-                  NODE VIEW / THERMAL OVERLAY
-                </text>
-                <text x="600" y="30" textAnchor="end" fill={a.severityColor} fontFamily="JetBrains Mono, monospace" fontSize="10">
-                  {a.mapStatus}
-                </text>
-
-                {a.hops.slice(0, -1).map((h, i) => {
-                  const next = a.hops[i + 1]!;
-                  return (
-                  <path
-                    key={h.ip + i}
-                    className="route"
-                    d={`M${h.x} ${h.y} Q ${(h.x + next.x) / 2} ${Math.min(h.y, next.y) - 70} ${next.x} ${next.y}`}
-                    fill="none"
-                    stroke={h.color}
-                    strokeWidth="2"
-                    opacity=".75"
-                  />
-                  );
-                })}
-
-                {a.hops.map((h, i) => (
-                  <g
-                    key={h.ip + i}
-                    className={`node${i === active ? " active" : ""}`}
-                    tabIndex={0}
-                    role="button"
-                    aria-label={h.title}
-                    onClick={() => setActive(i)}
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter" || e.key === " ") {
-                        e.preventDefault();
-                        setActive(i);
-                      }
-                    }}
-                  >
-                    <circle className="pulse" cx={h.x} cy={h.y} r="14" fill={h.color} opacity=".35" />
-                    <circle className="core" cx={h.x} cy={h.y} r="9" fill={h.color} />
-                    <text
-                      x={h.x}
-                      y={h.y + 30}
-                      textAnchor="middle"
-                      fill="#7c8798"
-                      fontFamily="JetBrains Mono, monospace"
-                      fontSize="10"
+            <div className="hop-console">
+              <div className="hop-chain" role="list" aria-label="Email relay chain">
+                {a.hops.map((item, index) => (
+                  <div className="hop-stage" key={`${item.ip}-${index}`} role="listitem">
+                    <button
+                      className={`hop-node${index === active ? " active" : ""}`}
+                      onClick={() => setActive(index)}
+                      aria-label={`Inspect ${item.title}`}
                     >
-                      {h.ip}
-                    </text>
-                  </g>
+                      <i style={{ background: item.verified ? "var(--green)" : "var(--red)" }} />
+                      <span>{index === 0 ? "Origin IP" : index === a.hops.length - 1 ? "Destination Mailbox" : `MTA Relay ${index}`}</span>
+                      <strong>{item.ip}</strong>
+                      <em className={item.verified ? "verified" : "forged"}>
+                        {item.verified ? "Verified" : "Forged / Spoofed"}
+                      </em>
+                    </button>
+                    {index < a.hops.length - 1 && <span className="hop-arrow" aria-hidden="true">→</span>}
+                  </div>
                 ))}
+              </div>
 
-                {pin && (
-                  <g className="geo-pin" aria-label={`Origin location: ${geo!.city}, ${geo!.country}`}>
-                    <circle className="pulse" cx={pin.x} cy={pin.y} r="18" fill="#ff5265" opacity=".35" />
-                    <circle cx={pin.x} cy={pin.y} r="6" fill="#ff5265" stroke="#0b0f1a" strokeWidth="2" />
-                    <text
-                      x={pin.x}
-                      y={pin.y - 16}
-                      textAnchor="middle"
-                      fill="#ff5265"
-                      fontFamily="JetBrains Mono, monospace"
-                      fontSize="10"
-                    >
-                      {geo!.city}
-                    </text>
-                  </g>
-                )}
-              </svg>
-
-              <div className="map-readout">
+              {hop && <div className="hop-readout">
                 <div className="readout-row">
                   <div>
                     <p className="readout-tag" style={{ color: hop.color, margin: 0 }}>
@@ -623,7 +606,8 @@ function Index() {
                     {hop.risk}
                   </span>
                 </div>
-              </div>
+                <code>{hop.sourceLine}</code>
+              </div>}
             </div>
           </section>
 
@@ -637,10 +621,10 @@ function Index() {
             </div>
 
             <div className="forensics-grid">
-              <div className="forensics-item">
+              <button className="forensics-item evidence-item" onClick={() => setInspector(a.inspector[3] ?? null)}>
                 <span>Origin IP Address</span>
                 <b>{originIp}</b>
-              </div>
+              </button>
               <div className="forensics-item">
                 <span>Country &amp; City</span>
                 <b>{geo ? `${geo.city}, ${geo.country}` : "—"}</b>
@@ -731,14 +715,14 @@ function Index() {
             <section className="card export-card">
               <h2>Forensic export</h2>
               <p>PCAP · Header dump · YARA + MITRE ATT&amp;CK mapping · signed SHA-256</p>
-              <button className="download" onClick={download} disabled={busy}>
-                {downloadLabel}
+               <button className="download" onClick={() => setEvidenceOpen(true)} disabled={busy}>
+                 Preview Section 65B Evidence
               </button>
               <button className="dispatch" onClick={() => setDispatchOpen(true)}>
                 Dispatch Evidence to CyberCell
               </button>
               <div className="export-meta">
-                 <span>Threat-Radar-Forensic-Report.pdf</span>
+                 <span>MailShield-Forensic-Report.pdf</span>
                 <span>2.4 MB</span>
                 <span>
                   Generated <strong>just now</strong>
@@ -747,7 +731,68 @@ function Index() {
               </div>
             </section>
           </div>
+
+          <section className={`terminal ${terminalOpen ? "open" : ""}`}>
+            <button className="terminal-head" onClick={() => setTerminalOpen((value) => !value)} aria-expanded={terminalOpen}>
+              <span><i /> LIVE FORENSICS TERMINAL</span>
+              <b>{terminalOpen ? "Collapse −" : "Expand +"}</b>
+            </button>
+            {terminalOpen && (
+              <div className="terminal-body" role="log" aria-live="polite">
+                {a.parsingLogs.map((entry, index) => (
+                  <p key={`${entry.message}-${index}`} className={entry.level.toLowerCase()}>
+                    <span>[{entry.level}]</span> {entry.message}
+                  </p>
+                ))}
+                <p className="success"><span>[SUCCESS]</span> {evidenceHash} generated and sealed.</p>
+                {geo && <p className="info"><span>[INFO]</span> IP geolocation resolved to {geo.city}, {geo.country}.</p>}
+                <div className="terminal-cursor" />
+              </div>
+            )}
+          </section>
         </div>
+
+        {inspector && (
+          <div className="drawer-overlay" onClick={() => setInspector(null)}>
+            <aside className="forensic-drawer" onClick={(event) => event.stopPropagation()} aria-label={`${inspector.label} forensic details`}>
+              <div className="drawer-head">
+                <div><span>Forensic Inspector</span><h3>{inspector.label}</h3></div>
+                <button onClick={() => setInspector(null)} aria-label="Close forensic inspector">×</button>
+              </div>
+              <div className={`drawer-verdict ${inspector.status}`}><span>Verdict</span><strong>{inspector.value}</strong></div>
+              <section><span>Exact raw header evidence</span><pre>{inspector.rawLine}</pre></section>
+              <section><span>Failure analysis</span><p>{inspector.reason}</p></section>
+              <section><span>Standards reference</span><a href={`https://www.rfc-editor.org/search/rfc_search_detail.php?title=${encodeURIComponent(inspector.reference)}`} target="_blank" rel="noreferrer">{inspector.reference} ↗</a></section>
+            </aside>
+          </div>
+        )}
+
+        {evidenceOpen && (
+          <div className="dispatch-overlay" onClick={() => setEvidenceOpen(false)}>
+            <div className="evidence-modal" onClick={(event) => event.stopPropagation()}>
+              <div className="evidence-banner">
+                <div className="police-seal"><span>MS</span><small>CYBER<br />EVIDENCE</small></div>
+                <div><span>FORM 65B · LEGAL EVIDENCE PREVIEW</span><h3>Official Cybercrime Forensic Evidence Report</h3><p>MailShield Digital Evidence Unit</p></div>
+                <button onClick={() => setEvidenceOpen(false)} aria-label="Close evidence preview">×</button>
+              </div>
+              <div className="evidence-preview-grid">
+                <div><span>Incident ID</span><strong>{INCIDENT_ID}</strong></div>
+                <div><span>Forensic Status</span><strong className="verified-text">SEALED · VERIFIED</strong></div>
+                <div className="hash-cell"><span>Cryptographic Verification</span><strong>{evidenceHash}</strong></div>
+                <div><span>Threat Classification</span><strong>{a.threatType}</strong></div>
+                <div><span>Threat Score</span><strong style={{ color: a.severityColor }}>{a.score}% · {a.severity}</strong></div>
+              </div>
+              <div className="signoff-grid">
+                <label>Investigator name<input value={investigatorName} onChange={(event) => setInvestigatorName(event.target.value)} placeholder="Enter full name" /></label>
+                <label>Designation / badge<input value={investigatorDesignation} onChange={(event) => setInvestigatorDesignation(event.target.value)} placeholder="Role or badge number" /></label>
+              </div>
+              <div className="evidence-actions">
+                <button className="dispatch-cancel" onClick={() => setEvidenceOpen(false)}>Cancel</button>
+                <button className="download evidence-download" onClick={download} disabled={busy}>{downloadLabel}</button>
+              </div>
+            </div>
+          </div>
+        )}
 
         {dispatchOpen && (
           <div className="dispatch-overlay" onClick={() => setDispatchOpen(false)}>
