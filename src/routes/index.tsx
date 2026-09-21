@@ -510,9 +510,9 @@ function Index() {
               <div className="gauge-number">
                 <strong>
                   {gauge}
-                  <span>%</span>
+                  <span>/100</span>
                 </strong>
-                <small>Malicious intent</small>
+                <small>Assessment Confidence: {confidence}</small>
               </div>
             </div>
 
