@@ -477,7 +477,7 @@ function Index() {
             <div className="score-top">
               <div>
                 <h2>Threat score</h2>
-                <p className="card-label">ML ensemble · 11 models · p={(a.score / 100).toFixed(3)}</p>
+                <p className="card-label">Rule-based header assessment</p>
               </div>
               <span
                 className="severity"
