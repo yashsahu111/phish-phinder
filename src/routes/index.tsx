@@ -88,7 +88,18 @@ function Index() {
   }, []);
 
   const hop = (a.hops[active] ?? a.hops[0])!;
-  const CIRC = 603.2_scalereturn = null;
+  const CIRC = 603.2;
+
+  // Assessment confidence: how much real evidence the rule-based engine had.
+  // Low = no authentication data at all; Medium = score near a band boundary;
+  // High = clear evidence well away from band edges.
+  const missingAuthCount = a.badges.filter((b) => b.label.includes("missing")).length;
+  const confidence =
+    missingAuthCount >= 3
+      ? "Low"
+      : (a.score >= 25 && a.score <= 35) || (a.score >= 60 && a.score <= 80)
+        ? "Medium"
+        : "High";
 
   const load = (sample: string) => {
     setMime(sample);
