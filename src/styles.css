@@ -616,5 +616,5 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .mailai .route, .mailai .pulse, .mailai .node-pulse, .mailai .threatfeed i { animation: none; }
+  .mailai .route, .mailai .pulse, .mailai .node-pulse, .mailai .node-ring, .mailai .glow-dot, .mailai .node .core, .mailai .threatfeed i { animation: none; }
 }
