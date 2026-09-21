@@ -41,6 +41,14 @@ const badgeStyle = (state: AuthState) =>
       ? { color: "var(--orange)", borderColor: "rgba(255,180,84,.4)" }
       : { color: "var(--green)", borderColor: "rgba(50,230,169,.4)" };
 
+const formatBytes = (bytes: number) => {
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+};
+
+const formatEvidenceTime = (value: string) => new Date(value).toUTCString();
+
 function Index() {
   const [mime, setMime] = useState(PHISHING_SAMPLE);
   const [submitted, setSubmitted] = useState(PHISHING_SAMPLE);
@@ -51,6 +59,12 @@ function Index() {
   const [busy, setBusy] = useState(false);
   const [geo, setGeo] = useState<IpGeo | null>(null);
   const [dispatchOpen, setDispatchOpen] = useState(false);
+  const [fileName, setFileName] = useState("phishing-sample.eml");
+  const [fileSize, setFileSize] = useState(() => new Blob([PHISHING_SAMPLE]).size);
+  const [acquisitionTime, setAcquisitionTime] = useState(() => new Date().toISOString());
+  const [analysisTime, setAnalysisTime] = useState(() => new Date().toISOString());
+  const [reportGenerationTime, setReportGenerationTime] = useState<string | null>(null);
+  const [evidenceHash, setEvidenceHash] = useState("Calculating…");
 
   const a = useMemo(() => analyze(submitted), [submitted]);
   const originIp = useMemo(() => extractOriginIp(submitted), [submitted]);
@@ -76,9 +90,30 @@ function Index() {
   useEffect(() => {
     setActive(0);
     setGauge(0);
+    setAnalysisTime(new Date().toISOString());
+    setReportGenerationTime(null);
     const t = setTimeout(() => setGauge(a.score), 60);
     return () => clearTimeout(t);
   }, [a]);
+
+  useEffect(() => {
+    let cancelled = false;
+    crypto.subtle
+      .digest("SHA-256", new TextEncoder().encode(submitted))
+      .then((digest) => {
+        if (cancelled) return;
+        const hash = Array.from(new Uint8Array(digest), (byte) =>
+          byte.toString(16).padStart(2, "0"),
+        ).join("");
+        setEvidenceHash(hash);
+      })
+      .catch(() => {
+        if (!cancelled) setEvidenceHash("Unavailable");
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [submitted]);
 
   useEffect(() => {
     const tick = () => setClock(new Date().toISOString().slice(11, 19));
@@ -101,17 +136,23 @@ function Index() {
         ? "Medium"
         : "High";
 
-  const load = (sample: string) => {
+  const load = (sample: string, name: string) => {
+    const now = new Date().toISOString();
     setMime(sample);
     setSubmitted(sample);
+    setFileName(name);
+    setFileSize(new Blob([sample]).size);
+    setAcquisitionTime(now);
   };
 
   const INCIDENT_ID = "TR-90341";
-  const EVIDENCE_HASH = "SHA-256: C4:9A:7E:11:0B:D3:88:F1:02";
+  const EVIDENCE_ID = `EV-${evidenceHash.slice(0, 12).toUpperCase()}`;
 
   const dispatchSubject = `[URGENT INCIDENT REPORT] Phishing Threat Detected - ID: ${INCIDENT_ID}`;
   const dispatchBody = [
     `Incident ID: ${INCIDENT_ID}`,
+    `Evidence ID: ${EVIDENCE_ID}`,
+    `SHA-256: ${evidenceHash}`,
     `Timestamp: ${new Date().toUTCString()}`,
     `Threat Score: ${a.score}% (${a.severity})`,
     `Origin IP: ${originIp}`,
@@ -138,6 +179,8 @@ function Index() {
 
   const download = () => {
     if (busy) return;
+    const generatedAt = new Date().toISOString();
+    setReportGenerationTime(generatedAt);
     setBusy(true);
     setDownloadLabel("Compiling evidence pack…");
     setTimeout(() => {
@@ -185,8 +228,11 @@ function Index() {
         startY: y,
         margin: { left: margin, right: margin },
         body: [
-          ["Incident ID", INCIDENT_ID, "Timestamp", new Date().toUTCString()],
-          ["Evidence Hash", EVIDENCE_HASH, "Forensic Status", "SEALED · TAMPER-EVIDENT"],
+          ["Evidence ID", EVIDENCE_ID, "Case ID", INCIDENT_ID],
+          ["SHA-256", evidenceHash, "Status", "Tamper-Evident Evidence Record"],
+          ["File name", fileName, "File size", formatBytes(fileSize)],
+          ["Acquisition time", formatEvidenceTime(acquisitionTime), "Analysis time", formatEvidenceTime(analysisTime)],
+          ["Report generation time", formatEvidenceTime(generatedAt), "", ""],
         ],
         theme: "grid",
         styles: { fontSize: 8.5, cellPadding: 2.5 },
@@ -196,6 +242,14 @@ function Index() {
         },
       });
       y = (doc as unknown as { lastAutoTable: { finalY: number } }).lastAutoTable.finalY + 10;
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(7.5);
+      doc.setTextColor(100, 116, 139);
+      doc.text(
+        "Hashing helps verify file integrity but does not by itself establish complete legal chain of custody.",
+        margin,
+        y - 4,
+      );
 
       // ---- Threat assessment table ----
       doc.setFont("helvetica", "bold");
@@ -344,6 +398,9 @@ function Index() {
     const file = e.target.files?.[0];
     if (!file) return;
     file.text().then((text) => {
+      setFileName(file.name);
+      setFileSize(file.size);
+      setAcquisitionTime(new Date().toISOString());
       setMime(text);
       setSubmitted(text);
     });
@@ -447,16 +504,24 @@ function Index() {
                 </span>
                 <input type="file" accept=".eml,.txt,.msg,text/plain" onChange={onFile} />
               </label>
-              <button className="primary" onClick={() => setSubmitted(mime)}>
+              <button
+                className="primary"
+                onClick={() => {
+                  setFileName("raw-email-artifact.eml");
+                  setFileSize(new Blob([mime]).size);
+                  setAcquisitionTime(new Date().toISOString());
+                  setSubmitted(mime);
+                }}
+              >
                 Run analysis →
               </button>
             </div>
 
             <div className="demo-row">
-              <button className="demo safe" onClick={() => load(SAFE_SAMPLE)}>
+              <button className="demo safe" onClick={() => load(SAFE_SAMPLE, "safe-sample.eml")}>
                 Load Safe Sample
               </button>
-              <button className="demo bad" onClick={() => load(PHISHING_SAMPLE)}>
+              <button className="demo bad" onClick={() => load(PHISHING_SAMPLE, "phishing-sample.eml")}>
                 Load Phishing Sample
               </button>
             </div>
@@ -755,7 +820,7 @@ function Index() {
 
             <section className="card export-card">
               <h2>Forensic export</h2>
-              <p>PCAP · Header dump · YARA + MITRE ATT&amp;CK mapping · signed SHA-256</p>
+              <p>Header artifact · SHA-256 integrity verification</p>
               <button className="download" onClick={download} disabled={busy}>
                 {downloadLabel}
               </button>
@@ -763,14 +828,19 @@ function Index() {
                 Dispatch Evidence to CyberCell
               </button>
               <div className="export-meta">
-                 <span>Threat-Radar-Forensic-Report.pdf</span>
-                <span>BSA §63 Electronic Evidence Package</span>
-                <span>2.4 MB</span>
-                <span>
-                  Generated <strong>just now</strong>
-                </span>
-                <span>Tamper-evident · hash C4:9A…F1:02</span>
+                <span><b>Evidence ID</b>{EVIDENCE_ID}</span>
+                <span><b>Case ID</b>{INCIDENT_ID}</span>
+                <span className="evidence-hash"><b>SHA-256</b>{evidenceHash}</span>
+                <span><b>File name</b>{fileName}</span>
+                <span><b>File size</b>{formatBytes(fileSize)}</span>
+                <span><b>Acquisition time</b>{formatEvidenceTime(acquisitionTime)}</span>
+                <span><b>Analysis time</b>{formatEvidenceTime(analysisTime)}</span>
+                <span><b>Report generation time</b>{reportGenerationTime ? formatEvidenceTime(reportGenerationTime) : "Pending"}</span>
               </div>
+              <strong className="evidence-status">Tamper-Evident Evidence Record</strong>
+              <p className="evidence-note">
+                Hashing helps verify file integrity but does not by itself establish complete legal chain of custody.
+              </p>
             </section>
           </div>
         </div>
