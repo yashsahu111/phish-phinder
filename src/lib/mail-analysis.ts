@@ -24,21 +24,6 @@ export type ThreatType =
   | "Malicious Payload / Executable Risk"
   | "Identity Spoofing & Domain Impersonation";
 
-export interface InspectorRecord {
-  id: "spf" | "dkim" | "dmarc" | "ip";
-  label: string;
-  status: AuthState;
-  value: string;
-  rawLine: string;
-  reason: string;
-  reference: string;
-}
-
-export interface ParsingLogEntry {
-  level: "INFO" | "WARN" | "SUCCESS";
-  message: string;
-}
-
 export interface Analysis {
   score: number;
   severity: string;
@@ -62,8 +47,6 @@ export interface Analysis {
   hops: Hop[];
   relayLabel: string;
   mapStatus: string;
-  inspector: InspectorRecord[];
-  parsingLogs: ParsingLogEntry[];
 }
 
 const RED = "#ff5265";
@@ -251,6 +234,8 @@ export function analyze(raw: string): Analysis {
   const severity = score > 70 ? "Critical" : score >= 30 ? "Elevated" : "Clean";
   const severityColor = score > 70 ? RED : score >= 30 ? ORANGE : GREEN;
 
+  // Classify from the current parsed artifact on every analysis. Concrete
+  // payload evidence wins, followed by BEC language and identity alignment.
   const threatType: Analysis["threatType"] =
     payloadThreat
       ? "Malicious Payload / Executable Risk"
@@ -379,85 +364,6 @@ export function analyze(raw: string): Analysis {
   const originIp = extractOriginIp(text);
   const authOk = allPass && !dkimFail;
 
-  const authLine = matchingLine(text, /Authentication-Results:|Received-SPF:/i);
-  const dkimLine = matchingLine(text, /Authentication-Results:|DKIM-Signature:/i);
-  const fromLine = matchingLine(text, /^From:/i);
-  const returnPathLine = matchingLine(text, /^Return-Path:|envelope-from|smtp\.mailfrom/i);
-  const originLine = matchingLine(text, new RegExp(originIp.replaceAll(".", "\\.")));
-  const inspector: InspectorRecord[] = [
-    {
-      id: "spf",
-      label: "SPF",
-      status: spfUnaligned || spfFail ? "fail" : stateOf(spfVerdict),
-      value: spfUnaligned ? "UNALIGNED" : spfVerdict.toUpperCase(),
-      rawLine: returnPathLine !== "Header not present" ? `${returnPathLine}\n${authLine}` : authLine,
-      reason: spfUnaligned
-        ? `Authenticated envelope domain ${envelopeDomain || "unknown"} does not align with From domain ${domain}.`
-        : spfFail
-          ? "The sending host was not authorized by the envelope domain's SPF policy."
-          : spfVerdict === "pass"
-            ? "The sending host is authorized and the envelope identity aligns with the visible sender."
-            : "No conclusive SPF result was found in the supplied artifact.",
-      reference: "RFC 7208 · Sender Policy Framework",
-    },
-    {
-      id: "dkim",
-      label: "DKIM",
-      status: dkimUnaligned || dkimFail ? "fail" : stateOf(dkimVerdict),
-      value: dkimUnaligned ? "UNALIGNED" : dkimVerdict.toUpperCase(),
-      rawLine: `${fromLine}\n${dkimLine}`,
-      reason: dkimUnaligned
-        ? `Signing domain ${dkimDomain || "unknown"} does not align with From domain ${domain}.`
-        : dkimFail
-          ? "The DKIM signature failed cryptographic validation."
-          : dkimVerdict === "pass"
-            ? `The DKIM signature validates and aligns with ${domain}.`
-            : "No conclusive DKIM signature result was found.",
-      reference: "RFC 6376 · DomainKeys Identified Mail",
-    },
-    {
-      id: "dmarc",
-      label: "DMARC",
-      status: stateOf(dmarcVerdict),
-      value: dmarcVerdict.toUpperCase(),
-      rawLine: `${fromLine}\n${authLine}`,
-      reason: dmarcFail
-        ? "Neither SPF nor DKIM produced an authenticated identity aligned with the visible From domain."
-        : dmarcVerdict === "pass"
-          ? "At least one authenticated mechanism aligns with the visible From domain."
-          : "No conclusive DMARC policy result was found.",
-      reference: "RFC 7489 · Domain-based Message Authentication",
-    },
-    {
-      id: "ip",
-      label: "IP Geolocation",
-      status: identityThreat ? "fail" : "pass",
-      value: originIp,
-      rawLine: originLine,
-      reason: identityThreat
-        ? "The originating infrastructure is associated with an unverified or misaligned sender identity."
-        : "The originating address was extracted from the earliest public Received hop.",
-      reference: "RFC 5321 §4.4 · Trace Information",
-    },
-  ];
-
-  const parsingLogs: ParsingLogEntry[] = [
-    { level: "INFO", message: "Parsing RFC MIME tree and normalizing header fields…" },
-    { level: "INFO", message: `Extracted sender ${from} and subject “${subject}”.` },
-    {
-      level: spfUnaligned || dkimUnaligned ? "WARN" : "SUCCESS",
-      message: `SPF ${spfUnaligned ? "unaligned" : spfVerdict}; DKIM ${dkimUnaligned ? "unaligned" : dkimVerdict}; DMARC ${dmarcVerdict}.`,
-    },
-    ...(payloadThreat
-      ? [{ level: "WARN" as const, message: `Executable-risk artifact detected: ${dangerous.join(", ") || "payload reference"}.` }]
-      : [{ level: "SUCCESS" as const, message: "No executable payload signatures detected." }]),
-    ...(becThreat
-      ? [{ level: "WARN" as const, message: "Urgency and financial-request language matched BEC heuristics." }]
-      : []),
-    { level: "INFO", message: `Origin trace resolved from ${originIp}; ${chain.length} mail hops indexed.` },
-    { level: "SUCCESS", message: `Classification committed: ${threatType}.` },
-  ];
-
   const narrative = !text
     ? "Paste raw headers or MIME above, or load a demo sample, and the engine will render a cited narrative here."
     : authOk
@@ -513,8 +419,6 @@ export function analyze(raw: string): Analysis {
     hops,
     relayLabel: `${chain.length} relays · ${40 + (score % 60)} ms RTT`,
     mapStatus: score > 70 ? "THREATFEED · LIVE" : "THREATFEED · NOMINAL",
-    inspector,
-    parsingLogs,
   };
 }
 

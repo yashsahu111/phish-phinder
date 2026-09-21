@@ -11,7 +11,6 @@ import {
   SAFE_SAMPLE,
   SPOOF_SAMPLE,
   type AuthState,
-  type InspectorRecord,
 } from "@/lib/mail-analysis";
 import { lookupIpGeo, type IpGeo } from "@/lib/ip-geo.functions";
 
@@ -47,15 +46,12 @@ const badgeStyle = (state: AuthState) =>
 function Index() {
   const [mime, setMime] = useState(PHISHING_SAMPLE);
   const [submitted, setSubmitted] = useState(PHISHING_SAMPLE);
-  const [active, setActive] = useState(0);
   const [gauge, setGauge] = useState(0);
   const [clock, setClock] = useState("00:00:00");
   const [downloadLabel, setDownloadLabel] = useState("Download Forensic PDF");
   const [busy, setBusy] = useState(false);
   const [geo, setGeo] = useState<IpGeo | null>(null);
   const [dispatchOpen, setDispatchOpen] = useState(false);
-  const [inspector, setInspector] = useState<InspectorRecord | null>(null);
-  const [terminalOpen, setTerminalOpen] = useState(true);
   const [evidenceOpen, setEvidenceOpen] = useState(false);
   const [investigatorName, setInvestigatorName] = useState("");
   const [investigatorDesignation, setInvestigatorDesignation] = useState("");
@@ -93,7 +89,6 @@ function Index() {
   }, [submitted]);
 
   useEffect(() => {
-    setActive(0);
     setGauge(0);
     const t = setTimeout(() => setGauge(a.score), 60);
     return () => clearTimeout(t);
@@ -106,7 +101,6 @@ function Index() {
     return () => clearInterval(id);
   }, []);
 
-  const hop = a.hops[active] ?? a.hops[0];
   const CIRC = 603.2;
 
   const load = (sample: string) => {
@@ -407,14 +401,6 @@ function Index() {
           </div>
         </section>
 
-        <nav className="preset-bar" aria-label="Threat simulation presets">
-          <span>Scenario presets</span>
-          <button onClick={() => load(SPOOF_SAMPLE)}>⚡ Load Spoof Attack</button>
-          <button onClick={() => load(SAFE_SAMPLE)}>🛡️ Load Clean Email</button>
-          <button onClick={() => load(BEC_SAMPLE)}>💼 Load BEC Scam</button>
-          <button onClick={() => load(PAYLOAD_SAMPLE)}>☣️ Load Payload Threat</button>
-        </nav>
-
         <div className="grid">
           <section className="card input-card" id="intake">
             <div className="card-head">
@@ -433,18 +419,20 @@ function Index() {
               <span className="tag">Queue 01 / 02</span>
             </div>
 
+            <nav className="preset-bar" aria-label="Threat simulation presets">
+              <span>Scenario presets</span>
+              <button type="button" onClick={() => load(SPOOF_SAMPLE)}>⚡ Load Spoof Attack</button>
+              <button type="button" onClick={() => load(SAFE_SAMPLE)}>🛡️ Load Clean Email</button>
+              <button type="button" onClick={() => load(BEC_SAMPLE)}>💼 Load BEC Scam</button>
+              <button type="button" onClick={() => load(PAYLOAD_SAMPLE)}>☣️ Load Payload Threat</button>
+            </nav>
+
             <div className="file-list">
               <span className="file-chip">From: {a.sender}</span>
-              {a.badges.map((b, index) => (
-                <button
-                  type="button"
-                  key={b.label}
-                  className="file-chip evidence-chip"
-                  style={badgeStyle(b.state)}
-                  onClick={() => setInspector(a.inspector[index] ?? null)}
-                >
+              {a.badges.map((b) => (
+                <span key={b.label} className="file-chip" style={badgeStyle(b.state)}>
                   {b.label}
-                </button>
+                </span>
               ))}
             </div>
 
@@ -562,7 +550,7 @@ function Index() {
             <div className="map-head card-head">
               <div>
                 <h2>Origin trace · hop chain</h2>
-                <p className="card-label">Select a node to inspect the relay</p>
+                <p className="card-label">Observed delivery route</p>
               </div>
               <span className="map-status">{a.relayLabel}</span>
             </div>
@@ -571,38 +559,18 @@ function Index() {
               <div className="hop-chain" role="list" aria-label="Email relay chain">
                 {a.hops.map((item, index) => (
                   <div className="hop-stage" key={`${item.ip}-${index}`} role="listitem">
-                    <button
-                      className={`hop-node${index === active ? " active" : ""}`}
-                      onClick={() => setActive(index)}
-                      aria-label={`Inspect ${item.title}`}
-                    >
+                    <div className="hop-node">
                       <i style={{ background: item.verified ? "var(--green)" : "var(--red)" }} />
                       <span>{index === 0 ? "Origin IP" : index === a.hops.length - 1 ? "Destination Mailbox" : `MTA Relay ${index}`}</span>
                       <strong>{item.ip}</strong>
                       <em className={item.verified ? "verified" : "forged"}>
                         {item.verified ? "Verified" : "Forged / Spoofed"}
                       </em>
-                    </button>
+                    </div>
                     {index < a.hops.length - 1 && <span className="hop-arrow" aria-hidden="true">→</span>}
                   </div>
                 ))}
               </div>
-
-              {hop && <div className="hop-readout">
-                <div className="readout-row">
-                  <div>
-                    <p className="readout-tag" style={{ color: hop.color, margin: 0 }}>
-                      {hop.tag}
-                    </p>
-                    <p className="readout-title">{hop.title}</p>
-                    <p className="readout-copy">{hop.body}</p>
-                  </div>
-                  <span className="risk" style={{ color: hop.color, borderColor: hop.color + "88" }}>
-                    {hop.risk}
-                  </span>
-                </div>
-                <code>{hop.sourceLine}</code>
-              </div>}
             </div>
           </section>
 
@@ -616,10 +584,10 @@ function Index() {
             </div>
 
             <div className="forensics-grid">
-              <button className="forensics-item evidence-item" onClick={() => setInspector(a.inspector[3] ?? null)}>
+              <div className="forensics-item">
                 <span>Origin IP Address</span>
                 <b>{originIp}</b>
-              </button>
+              </div>
               <div className="forensics-item">
                 <span>Country &amp; City</span>
                 <b>{geo ? `${geo.city}, ${geo.country}` : "—"}</b>
@@ -727,40 +695,7 @@ function Index() {
             </section>
           </div>
 
-          <section className={`terminal ${terminalOpen ? "open" : ""}`}>
-            <button className="terminal-head" onClick={() => setTerminalOpen((value) => !value)} aria-expanded={terminalOpen}>
-              <span><i /> LIVE FORENSICS TERMINAL</span>
-              <b>{terminalOpen ? "Collapse −" : "Expand +"}</b>
-            </button>
-            {terminalOpen && (
-              <div className="terminal-body" role="log" aria-live="polite">
-                {a.parsingLogs.map((entry, index) => (
-                  <p key={`${entry.message}-${index}`} className={entry.level.toLowerCase()}>
-                    <span>[{entry.level}]</span> {entry.message}
-                  </p>
-                ))}
-                <p className="success"><span>[SUCCESS]</span> {evidenceHash} generated and sealed.</p>
-                {geo && <p className="info"><span>[INFO]</span> IP geolocation resolved to {geo.city}, {geo.country}.</p>}
-                <div className="terminal-cursor" />
-              </div>
-            )}
-          </section>
         </div>
-
-        {inspector && (
-          <div className="drawer-overlay" onClick={() => setInspector(null)}>
-            <aside className="forensic-drawer" onClick={(event) => event.stopPropagation()} aria-label={`${inspector.label} forensic details`}>
-              <div className="drawer-head">
-                <div><span>Forensic Inspector</span><h3>{inspector.label}</h3></div>
-                <button onClick={() => setInspector(null)} aria-label="Close forensic inspector">×</button>
-              </div>
-              <div className={`drawer-verdict ${inspector.status}`}><span>Verdict</span><strong>{inspector.value}</strong></div>
-              <section><span>Exact raw header evidence</span><pre>{inspector.rawLine}</pre></section>
-              <section><span>Failure analysis</span><p>{inspector.reason}</p></section>
-              <section><span>Standards reference</span><a href={`https://www.rfc-editor.org/search/rfc_search_detail.php?title=${encodeURIComponent(inspector.reference)}`} target="_blank" rel="noreferrer">{inspector.reference} ↗</a></section>
-            </aside>
-          </div>
-        )}
 
         {evidenceOpen && (
           <div className="dispatch-overlay" onClick={() => setEvidenceOpen(false)}>

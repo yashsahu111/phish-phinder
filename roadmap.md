@@ -1,9 +1,7 @@
-# MailShield upgrade roadmap
+# MailShield cleanup roadmap
 
-- [x] Correct four-way Primary Threat Type classification
-- [x] Add four scenario presets
-- [x] Build interactive hop-chain telemetry
-- [x] Add forensic metric inspector drawer
-- [x] Add live collapsible parsing terminal
-- [x] Add Section 65B evidence preview, SHA-256 seal, sign-off, and download
-- [x] Verify desktop, mobile, interactions, and build health
+- [ ] Remove the live forensics terminal and forensic drawer overlays
+- [ ] Restore a simple three-card origin, relay, and destination route
+- [ ] Keep four presets directly above the email input
+- [ ] Verify all four dynamic Primary Threat Type outcomes
+- [ ] Check desktop, mobile, interactions, and build health
