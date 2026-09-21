@@ -18,4 +18,4 @@
 - [x] Restore animated trajectory arcs, glowing nodes, and live grid metadata
 - [x] Add persistent selected-hop reverse DNS and RTT status
 - [x] Synchronize the IP Forensics panel with the selected relay
-- [ ] Verify every preset and relay selection on desktop and mobile
+- [x] Verify every preset and relay selection on desktop and mobile
