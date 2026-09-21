@@ -1,7 +1,7 @@
 # MailShield cleanup roadmap
 
-- [ ] Remove the live forensics terminal and forensic drawer overlays
-- [ ] Restore a simple three-card origin, relay, and destination route
-- [ ] Keep four presets directly above the email input
-- [ ] Verify all four dynamic Primary Threat Type outcomes
-- [ ] Check desktop, mobile, interactions, and build health
+- [x] Remove the live forensics terminal and forensic drawer overlays
+- [x] Restore a simple three-card origin, relay, and destination route
+- [x] Keep four presets directly above the email input
+- [x] Verify all four dynamic Primary Threat Type outcomes
+- [x] Check desktop, mobile, interactions, and build health
