@@ -88,7 +88,7 @@ function Index() {
   }, []);
 
   const hop = (a.hops[active] ?? a.hops[0])!;
-  const CIRC = 603.2;
+  const CIRC = 603.2_scalereturn = null;
 
   const load = (sample: string) => {
     setMime(sample);
