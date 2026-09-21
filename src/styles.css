@@ -559,3 +559,42 @@
 .mailai .dispatch-send:hover {
   filter: brightness(1.1);
 }
+.mailai .auth-details {
+  margin: 12px 0 4px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 10px;
+  overflow: hidden;
+  font-size: 11.5px;
+}
+.mailai .auth-details-head {
+  padding: 6px 12px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  color: rgba(255, 255, 255, 0.45);
+  background: rgba(255, 255, 255, 0.04);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+.mailai .auth-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 12px;
+  padding: 6px 12px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+.mailai .auth-row:nth-child(odd) {
+  background: rgba(255, 255, 255, 0.02);
+}
+.mailai .auth-row:last-child {
+  border-bottom: none;
+}
+.mailai .auth-label {
+  color: rgba(255, 255, 255, 0.55);
+  white-space: nowrap;
+}
+.mailai .auth-value {
+  text-align: right;
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
