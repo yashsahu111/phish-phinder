@@ -763,6 +763,10 @@ function Index() {
                 <span className="tag">Live</span>
               </div>
 
+              <p className="ai-tag-row">
+                <span className="ai-tag">Observed</span>
+                <span className="ai-tag-desc">Extracted directly from the submitted headers</span>
+              </p>
               <div className="file-list" style={{ marginBottom: 12 }}>
                 <span className="file-chip">Sender Identity: {a.senderDomain}</span>
                 <span className="file-chip">
@@ -772,15 +776,23 @@ function Index() {
                 </span>
               </div>
 
+              <p className="ai-tag-row" style={{ marginTop: 4 }}>
+                <span className="ai-tag">AI Inference</span>
+                <span className="ai-tag-desc">Rule-based reasoning over the observed data</span>
+              </p>
               <p className="ai-copy">{a.narrative}</p>
 
               {a.identityInsight && (
                 <div className="ai-insight">
-                  <span>AI Insights</span>
+                  <span>AI Insights · AI Inference</span>
                   <p>{a.identityInsight}</p>
                 </div>
               )}
 
+              <p className="ai-tag-row" style={{ marginTop: 14 }}>
+                <span className="ai-tag">Heuristic</span>
+                <span className="ai-tag-desc">Deterministic rule-engine verdicts</span>
+              </p>
               <div className="judge-grid">
                 <div className="judge-card">
                   <span>Threat Category</span>
@@ -810,6 +822,10 @@ function Index() {
                 </div>
               </div>
 
+              <p className="ai-tag-row" style={{ marginTop: 14 }}>
+                <span className="ai-tag">Observed</span>
+                <span className="ai-tag-desc">Signals read from the submitted headers</span>
+              </p>
               {a.signals.map((s) => (
                 <div className="signal" key={s.label}>
                   {s.label}
