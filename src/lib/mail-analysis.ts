@@ -14,17 +14,36 @@ export interface Hop {
   ip: string;
   x: number;
   y: number;
+  verified: boolean;
+  sourceLine: string;
+}
+
+export type ThreatType =
+  | "Clean / Authenticated Mail"
+  | "Business Email Compromise (BEC)"
+  | "Malicious Payload / Executable Risk"
+  | "Identity Spoofing & Domain Impersonation";
+
+export interface InspectorRecord {
+  id: "spf" | "dkim" | "dmarc" | "ip";
+  label: string;
+  status: AuthState;
+  value: string;
+  rawLine: string;
+  reason: string;
+  reference: string;
+}
+
+export interface ParsingLogEntry {
+  level: "INFO" | "WARN" | "SUCCESS";
+  message: string;
 }
 
 export interface Analysis {
   score: number;
   severity: string;
   severityColor: string;
-  threatType:
-    | "Identity Spoofing & Domain Impersonation"
-    | "Social Engineering & Phishing"
-    | "Malicious Payload / Link Hazard"
-    | "Clean / Low Risk";
+  threatType: ThreatType;
   threatContext: string;
   identityInsight: string | null;
   judge: { category: string; systemRisk: string; userRisk: string };
@@ -43,6 +62,8 @@ export interface Analysis {
   hops: Hop[];
   relayLabel: string;
   mapStatus: string;
+  inspector: InspectorRecord[];
+  parsingLogs: ParsingLogEntry[];
 }
 
 const RED = "#ff5265";
@@ -53,6 +74,10 @@ const BLUE = "#48c8f0";
 function header(text: string, name: string) {
   const m = text.match(new RegExp(`^${name}:\\s*(.+)$`, "im"));
   return m?.[1]?.trim() ?? "";
+}
+
+function matchingLine(text: string, pattern: RegExp) {
+  return text.split(/\r?\n/).find((line) => pattern.test(line))?.trim() ?? "Header not present";
 }
 
 function extractIps(text: string) {
@@ -179,7 +204,8 @@ export function analyze(raw: string): Analysis {
   const domainFlag =
     SUSPECT_TLD.test(domain) || SUSPECT_TLD.test(text) || FAKE_DOMAIN.test(domain) || FAKE_DOMAIN.test(text);
   const socialHits = new Set((text.match(SOCIAL_KEYWORDS) ?? []).map((k) => k.toLowerCase())).size;
-  const socialTrigger = socialHits >= 2 || FINANCIAL_SOLICITATION.test(text);
+  const financialTrigger = FINANCIAL_SOLICITATION.test(text);
+  const socialTrigger = socialHits >= 2 || financialTrigger;
   const payloadHit = PAYLOAD_REF.test(text);
   const linkCount = (text.match(/https?:\/\/[^\s"'<>]+/gi) ?? []).length;
 
@@ -189,12 +215,21 @@ export function analyze(raw: string): Analysis {
   const failCount = verdicts.filter((v) => v === "fail").length + alignmentFails;
   const unknownCount = verdicts.filter((v) => v === "unknown").length;
   const allPass = failCount === 0 && unknownCount === 0;
-  const critical = dmarcFail && (domainFlag || payloadHit || failCount >= 2);
+  const identityThreat = dmarcFail || dkimUnaligned || spfUnaligned;
+  const payloadThreat = payloadHit || dangerous.length > 0;
+  const becThreat = socialTrigger && !payloadThreat;
+  const critical = payloadThreat || (dmarcFail && (domainFlag || failCount >= 2));
 
   const clamp = (n: number, lo: number, hi: number) => Math.max(lo, Math.min(hi, n));
   let score: number;
   let spoofMetric: number;
-  if (critical) {
+  if (payloadThreat) {
+    score = clamp(82 + dangerous.length * 5 + (identityThreat ? 5 : 0), 80, 99);
+    spoofMetric = identityThreat ? 0.85 : 0.25;
+  } else if (becThreat) {
+    score = clamp(48 + socialHits * 3 + (financialTrigger ? 5 : 0) + (identityThreat ? 4 : 0), 40, 69);
+    spoofMetric = identityThreat ? 0.72 : 0.18;
+  } else if (critical) {
     score = clamp(80 + failCount * 4 + (domainFlag ? 4 : 0) + (payloadHit ? 4 : 0) + (socialTrigger ? 3 : 0), 80, 99);
     spoofMetric = clamp(Number((0.85 + failCount * 0.04 + (dkimMisaligned ? 0.03 : 0)).toFixed(2)), 0.85, 0.99);
   } else if (allPass && !domainFlag && !payloadHit) {
@@ -216,25 +251,23 @@ export function analyze(raw: string): Analysis {
   const severity = score > 70 ? "Critical" : score >= 30 ? "Elevated" : "Clean";
   const severityColor = score > 70 ? RED : score >= 30 ? ORANGE : GREEN;
 
-  const identityThreat = dmarcFail || dkimUnaligned || spfUnaligned;
-  const linkHazard = payloadHit || dangerous.length > 0 || (linkCount > 0 && domainFlag);
   const threatType: Analysis["threatType"] =
-    score < 20
-      ? "Clean / Low Risk"
-      : identityThreat
-        ? "Identity Spoofing & Domain Impersonation"
-        : linkHazard
-          ? "Malicious Payload / Link Hazard"
-          : "Social Engineering & Phishing";
+    payloadThreat
+      ? "Malicious Payload / Executable Risk"
+      : becThreat
+        ? "Business Email Compromise (BEC)"
+        : identityThreat
+          ? "Identity Spoofing & Domain Impersonation"
+          : "Clean / Authenticated Mail";
 
   const threatContext =
     threatType === "Identity Spoofing & Domain Impersonation"
       ? `Warning: High threat score reflects identity fraud and email spoofing risks${dkimUnaligned || spfUnaligned ? " caused by an unaligned sender domain" : " caused by failed sender authentication"}. This indicates a high risk of social engineering or credential theft rather than direct system malware execution.`
-      : threatType === "Malicious Payload / Link Hazard"
+      : threatType === "Malicious Payload / Executable Risk"
         ? `Warning: The message contains ${payloadCountLabel(attachments.length, linkCount)} with characteristics commonly used for malware delivery or credential capture. Avoid opening attachments or following links until the artifact is contained.`
-        : threatType === "Social Engineering & Phishing"
-          ? `Warning: The language in “${subject}” uses urgency or financial pressure associated with phishing attempts. Verify the request through a trusted channel before taking action.`
-          : `No material authentication, payload, link, or social-engineering risks were identified for ${domain}. The message currently presents a low-risk profile.`;
+        : threatType === "Business Email Compromise (BEC)"
+          ? `Warning: “${subject}” combines urgency with a financial request, a pattern associated with business email compromise. Confirm the sender and payment request through a trusted channel.`
+          : `SPF, DKIM and DMARC align with ${domain}, and no dangerous attachment or manipulation pattern was detected. This message presents a low-risk authenticated profile.`;
 
   const routingDomain = dkimDomain || envelopeDomain || "";
   const identityInsight =
@@ -249,15 +282,15 @@ export function analyze(raw: string): Analysis {
           systemRisk: "Low (No malicious code execution)",
           userRisk: "Critical (High probability of social engineering & password theft)",
         }
-      : threatType === "Malicious Payload / Link Hazard"
+      : threatType === "Malicious Payload / Executable Risk"
         ? {
             category: "Malicious Payload & Link Hazard",
             systemRisk: "Critical (Executable artifact present)",
             userRisk: "High (Malware or credential capture on interaction)",
           }
-        : threatType === "Social Engineering & Phishing"
+        : threatType === "Business Email Compromise (BEC)"
           ? {
-              category: "Social Engineering & Phishing Hazard",
+            category: "Business Email Compromise",
               systemRisk: "Low (No malicious code execution)",
               userRisk: "Critical (Urgency & financial pressure tactics)",
             }
@@ -295,6 +328,8 @@ export function analyze(raw: string): Analysis {
   ];
 
   const hops: Hop[] = chain.map((ip, i) => {
+    const sourceLine = matchingLine(text, new RegExp(ip.replaceAll(".", "\\.")));
+    const verified = sourceLine !== "Header not present" && (i > 0 || !identityThreat);
     if (i === 0) {
       return {
         tag: "Stage 01 · Origin",
@@ -306,6 +341,8 @@ export function analyze(raw: string): Analysis {
         risk: score > 70 ? "RISK 0.99" : "RISK 0.04",
         color: score > 70 ? RED : GREEN,
         ip,
+        verified,
+        sourceLine,
         ...(positions[0] as { x: number; y: number }),
       };
     }
@@ -320,6 +357,8 @@ export function analyze(raw: string): Analysis {
         risk: score > 70 ? "RISK 0.81" : "RISK 0.06",
         color: score > 70 ? ORANGE : GREEN,
         ip,
+        verified,
+        sourceLine,
         ...(positions[1] as { x: number; y: number }),
       };
     }
@@ -330,6 +369,8 @@ export function analyze(raw: string): Analysis {
       risk: score > 70 ? "CONTAIN" : "DELIVER",
       color: BLUE,
       ip,
+      verified: sourceLine !== "Header not present",
+      sourceLine,
       ...(positions[2] as { x: number; y: number }),
     };
   });
@@ -337,6 +378,85 @@ export function analyze(raw: string): Analysis {
   const payloadCount = attachments.length;
   const originIp = extractOriginIp(text);
   const authOk = allPass && !dkimFail;
+
+  const authLine = matchingLine(text, /Authentication-Results:|Received-SPF:/i);
+  const dkimLine = matchingLine(text, /Authentication-Results:|DKIM-Signature:/i);
+  const fromLine = matchingLine(text, /^From:/i);
+  const returnPathLine = matchingLine(text, /^Return-Path:|envelope-from|smtp\.mailfrom/i);
+  const originLine = matchingLine(text, new RegExp(originIp.replaceAll(".", "\\.")));
+  const inspector: InspectorRecord[] = [
+    {
+      id: "spf",
+      label: "SPF",
+      status: spfUnaligned || spfFail ? "fail" : stateOf(spfVerdict),
+      value: spfUnaligned ? "UNALIGNED" : spfVerdict.toUpperCase(),
+      rawLine: returnPathLine !== "Header not present" ? `${returnPathLine}\n${authLine}` : authLine,
+      reason: spfUnaligned
+        ? `Authenticated envelope domain ${envelopeDomain || "unknown"} does not align with From domain ${domain}.`
+        : spfFail
+          ? "The sending host was not authorized by the envelope domain's SPF policy."
+          : spfVerdict === "pass"
+            ? "The sending host is authorized and the envelope identity aligns with the visible sender."
+            : "No conclusive SPF result was found in the supplied artifact.",
+      reference: "RFC 7208 · Sender Policy Framework",
+    },
+    {
+      id: "dkim",
+      label: "DKIM",
+      status: dkimUnaligned || dkimFail ? "fail" : stateOf(dkimVerdict),
+      value: dkimUnaligned ? "UNALIGNED" : dkimVerdict.toUpperCase(),
+      rawLine: `${fromLine}\n${dkimLine}`,
+      reason: dkimUnaligned
+        ? `Signing domain ${dkimDomain || "unknown"} does not align with From domain ${domain}.`
+        : dkimFail
+          ? "The DKIM signature failed cryptographic validation."
+          : dkimVerdict === "pass"
+            ? `The DKIM signature validates and aligns with ${domain}.`
+            : "No conclusive DKIM signature result was found.",
+      reference: "RFC 6376 · DomainKeys Identified Mail",
+    },
+    {
+      id: "dmarc",
+      label: "DMARC",
+      status: stateOf(dmarcVerdict),
+      value: dmarcVerdict.toUpperCase(),
+      rawLine: `${fromLine}\n${authLine}`,
+      reason: dmarcFail
+        ? "Neither SPF nor DKIM produced an authenticated identity aligned with the visible From domain."
+        : dmarcVerdict === "pass"
+          ? "At least one authenticated mechanism aligns with the visible From domain."
+          : "No conclusive DMARC policy result was found.",
+      reference: "RFC 7489 · Domain-based Message Authentication",
+    },
+    {
+      id: "ip",
+      label: "IP Geolocation",
+      status: identityThreat ? "fail" : "pass",
+      value: originIp,
+      rawLine: originLine,
+      reason: identityThreat
+        ? "The originating infrastructure is associated with an unverified or misaligned sender identity."
+        : "The originating address was extracted from the earliest public Received hop.",
+      reference: "RFC 5321 §4.4 · Trace Information",
+    },
+  ];
+
+  const parsingLogs: ParsingLogEntry[] = [
+    { level: "INFO", message: "Parsing RFC MIME tree and normalizing header fields…" },
+    { level: "INFO", message: `Extracted sender ${from} and subject “${subject}”.` },
+    {
+      level: spfUnaligned || dkimUnaligned ? "WARN" : "SUCCESS",
+      message: `SPF ${spfUnaligned ? "unaligned" : spfVerdict}; DKIM ${dkimUnaligned ? "unaligned" : dkimVerdict}; DMARC ${dmarcVerdict}.`,
+    },
+    ...(payloadThreat
+      ? [{ level: "WARN" as const, message: `Executable-risk artifact detected: ${dangerous.join(", ") || "payload reference"}.` }]
+      : [{ level: "SUCCESS" as const, message: "No executable payload signatures detected." }]),
+    ...(becThreat
+      ? [{ level: "WARN" as const, message: "Urgency and financial-request language matched BEC heuristics." }]
+      : []),
+    { level: "INFO", message: `Origin trace resolved from ${originIp}; ${chain.length} mail hops indexed.` },
+    { level: "SUCCESS", message: `Classification committed: ${threatType}.` },
+  ];
 
   const narrative = !text
     ? "Paste raw headers or MIME above, or load a demo sample, and the engine will render a cited narrative here."
@@ -393,6 +513,8 @@ export function analyze(raw: string): Analysis {
     hops,
     relayLabel: `${chain.length} relays · ${40 + (score % 60)} ms RTT`,
     mapStatus: score > 70 ? "THREATFEED · LIVE" : "THREATFEED · NOMINAL",
+    inspector,
+    parsingLogs,
   };
 }
 
@@ -419,3 +541,34 @@ Authentication-Results: spf=pass; dkim=pass; dmarc=pass
 
 Body: Here is a summary of activity across your repositories this week.
 No action is required. Manage your notification settings in your account.`;
+
+export const SPOOF_SAMPLE = `From: security@indiaspeaks.net
+Return-Path: <bounce@amazonses.com>
+To: analyst@northwind.corp
+Subject: Security notification
+Received: from relay.amazonses.com (54.240.8.19) by mx.northwind.corp (198.51.100.24)
+Authentication-Results: spf=pass smtp.mailfrom=amazonses.com; dkim=pass header.i=@amazonses.com; dmarc=fail
+DKIM-Signature: v=1; d=amazonses.com; s=mail;
+
+Body: Review this security notification with your administrator.`;
+
+export const BEC_SAMPLE = `From: chief.executive@northwind.corp
+Return-Path: <chief.executive@northwind.corp>
+To: finance@northwind.corp
+Subject: URGENT confidential wire transfer request
+Received: from mail.northwind.corp (198.51.100.44) by mx.northwind.corp (198.51.100.24)
+Authentication-Results: spf=pass smtp.mailfrom=northwind.corp; dkim=pass header.i=@northwind.corp; dmarc=pass
+DKIM-Signature: v=1; d=northwind.corp; s=mail;
+
+Body: Process the urgent wire transfer payment today. Keep this invoice confidential and reply when the funds are sent.`;
+
+export const PAYLOAD_SAMPLE = `From: documents@trusted-files.com
+Return-Path: <documents@trusted-files.com>
+To: operations@northwind.corp
+Subject: Updated payroll document
+Received: from smtp.trusted-files.com (198.51.100.77) by mx.northwind.corp (198.51.100.24)
+Authentication-Results: spf=pass smtp.mailfrom=trusted-files.com; dkim=pass header.i=@trusted-files.com; dmarc=pass
+DKIM-Signature: v=1; d=trusted-files.com; s=mail;
+Content-Disposition: attachment; filename="payroll_update.exe"
+
+Body: Open payroll_update.exe to review the updated payroll document.`;
