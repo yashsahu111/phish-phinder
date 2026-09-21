@@ -1,3 +1,4 @@
+// MailShield — final release build (reverted stable version)
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { jsPDF } from "jspdf";
